@@ -68,13 +68,18 @@ export default function AdminPage() {
     })
   }
 
-  let saveTimer: any
-  const scheduleSave = (key: string, updates: Partial<Pick<TextKey, "key" | "value" | "status">>) => {
-    clearTimeout(saveTimer)
-    saveTimer = setTimeout(async () => {
+  const timersRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncTimers?: Record<string, any> }
+  if (!timersRef.__textsyncTimers) timersRef.__textsyncTimers = {}
+  const markedRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncMarked?: Record<string, boolean> }
+  if (!markedRef.__textsyncMarked) markedRef.__textsyncMarked = {}
+
+  const scheduleSave = (key: string, updates: Partial<Pick<TextKey, "value">>, delay = 800) => {
+    const timers = timersRef.__textsyncTimers!
+    if (timers[key]) clearTimeout(timers[key])
+    timers[key] = setTimeout(async () => {
       await updateText(key, updates)
-      mutate()
-    }, 400)
+      // no immediate mutate to avoid UI jank
+    }, delay)
   }
 
   const toggleSelected = (k: string, checked: boolean) => {
@@ -180,23 +185,31 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         <Input
-                          value={text.key}
-                          onChange={(e) => {
+                          defaultValue={text.key}
+                          onBlur={async (e) => {
                             const newKey = e.target.value
-                            // optimistic local update
-                            text.key = newKey
-                            // schedule save: update key -> also set status to in_review
-                            scheduleSave(text.key, { key: newKey, status: "in_review" })
+                            if (newKey && newKey !== text.key) {
+                              await updateText(text.key, { key: newKey, status: "in_review" })
+                              mutate()
+                            }
                           }}
                         />
                       </TableCell>
                       <TableCell className="max-w-md">
                         <Input
-                          value={text.value}
-                          onChange={(e) => {
+                          defaultValue={text.value}
+                          onChange={async (e) => {
                             const newVal = e.target.value
-                            text.value = newVal
-                            scheduleSave(text.key, { value: newVal, status: "in_review" })
+                            // mark status once per row
+                            if (!markedRef.__textsyncMarked![text.key]) {
+                              markedRef.__textsyncMarked![text.key] = true
+                              await updateText(text.key, { status: "in_review" })
+                            }
+                            scheduleSave(text.key, { value: newVal })
+                          }}
+                          onBlur={async (e) => {
+                            const newVal = e.target.value
+                            await updateText(text.key, { value: newVal })
                           }}
                         />
                       </TableCell>

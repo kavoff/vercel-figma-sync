@@ -44,10 +44,20 @@ function isNodeVisible(node: BaseNode & { visible: boolean }): boolean {
   return true
 }
 
-// Collect text nodes within a node tree, respecting visibility
+// Find the page of a node
+function getNodePage(node: BaseNode): PageNode | null {
+  let current: BaseNode | null = node
+  while (current) {
+    if ((current as BaseNode).type === 'PAGE') return current as PageNode
+    current = (current as any).parent || null
+  }
+  return null
+}
+
+// Collect text nodes within a node tree, respecting visibility and page
 function collectVisibleTextNodes(root: BaseNode & ChildrenMixin): TextNode[] {
   const nodes = root.findAll(n => n.type === 'TEXT') as TextNode[]
-  return nodes.filter(n => isNodeVisible(n))
+  return nodes.filter(n => isNodeVisible(n) && getNodePage(n) === figma.currentPage)
 }
 
 // Resolve export scope: selection > current page > none
@@ -71,7 +81,7 @@ function getScopedTextNodes(): TextNode[] {
   return collectVisibleTextNodes(figma.currentPage)
 }
 
-// Build a more human key using nearest container/page context
+// Build a more human key using nearest container/page context (no hash)
 function makeContextualKey(text: string, node: SceneNode): string {
   function slugify(s: string): string {
     return s
@@ -92,15 +102,8 @@ function makeContextualKey(text: string, node: SceneNode): string {
   }
   const pageName = figma.currentPage.name
   const scope = slugify(containerName || pageName)
-  const base = slugify(text).slice(0, 24)
-  // small hash to ensure uniqueness across duplicates
-  let hash = 0
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash << 5) - hash + text.charCodeAt(i)
-    hash |= 0
-  }
-  const hashStr = Math.abs(hash).toString(36).slice(0, 4)
-  return `${scope}_${base}_${hashStr}`
+  const base = slugify(text).slice(0, 30)
+  return `${scope}_${base}`
 }
 
 // Export texts to admin panel
@@ -146,7 +149,7 @@ async function exportTexts(apiUrl: string) {
       key,
       value,
       lang: "ru",
-      sources: [{ type: "figma", file: figma.root.name }],
+      sources: [{ type: "figma", file: figma.currentPage.name }],
     }))
 
     // Send to API

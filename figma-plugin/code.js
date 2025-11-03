@@ -38,10 +38,20 @@ function isNodeVisible(node) {
     }
     return true;
 }
-// Collect text nodes within a node tree, respecting visibility
+// Find the page of a node
+function getNodePage(node) {
+    let current = node;
+    while (current) {
+        if (current.type === 'PAGE')
+            return current;
+        current = current.parent || null;
+    }
+    return null;
+}
+// Collect text nodes within a node tree, respecting visibility and page
 function collectVisibleTextNodes(root) {
     const nodes = root.findAll(n => n.type === 'TEXT');
-    return nodes.filter(n => isNodeVisible(n));
+    return nodes.filter(n => isNodeVisible(n) && getNodePage(n) === figma.currentPage);
 }
 // Resolve export scope: selection > current page > none
 function getScopedTextNodes() {
@@ -63,7 +73,7 @@ function getScopedTextNodes() {
     // default to current page only
     return collectVisibleTextNodes(figma.currentPage);
 }
-// Build a more human key using nearest container/page context
+// Build a more human key using nearest container/page context (no hash)
 function makeContextualKey(text, node) {
     function slugify(s) {
         return s
@@ -84,15 +94,8 @@ function makeContextualKey(text, node) {
     }
     const pageName = figma.currentPage.name;
     const scope = slugify(containerName || pageName);
-    const base = slugify(text).slice(0, 24);
-    // small hash to ensure uniqueness across duplicates
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-        hash = (hash << 5) - hash + text.charCodeAt(i);
-        hash |= 0;
-    }
-    const hashStr = Math.abs(hash).toString(36).slice(0, 4);
-    return `${scope}_${base}_${hashStr}`;
+    const base = slugify(text).slice(0, 30);
+    return `${scope}_${base}`;
 }
 // Export texts to admin panel
 async function exportTexts(apiUrl) {
@@ -134,7 +137,7 @@ async function exportTexts(apiUrl) {
             key,
             value,
             lang: "ru",
-            sources: [{ type: "figma", file: figma.root.name }],
+            sources: [{ type: "figma", file: figma.currentPage.name }],
         }));
         // Send to API
         const response = await fetch(`${apiUrl}/api/texts/bulk-upsert`, {
