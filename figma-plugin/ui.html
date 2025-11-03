@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #333;
+    }
+    
+    h2 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .input-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+    }
+    
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #0066ff;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-primary {
+      background: #0066ff;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #0052cc;
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    
+    .status {
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+    }
+    
+    .status.show {
+      display: block;
+    }
+    
+    .status.success {
+      background: #e6f7ed;
+      color: #0d6832;
+      border: 1px solid #b3e6c8;
+    }
+    
+    .status.error {
+      background: #ffe6e6;
+      color: #cc0000;
+      border: 1px solid #ffb3b3;
+    }
+    
+    .status.info {
+      background: #e6f2ff;
+      color: #0052cc;
+      border: 1px solid #b3d9ff;
+    }
+  </style>
+</head>
+<body>
+  <h2>TextSync</h2>
+  
+  <div class="input-group">
+    <label for="apiUrl">API URL</label>
+    <input 
+      type="text" 
+      id="apiUrl" 
+      placeholder="https://your-app.vercel.app"
+      value=""
+    />
+  </div>
+  
+  <div class="button-group">
+    <button class="btn-primary" id="exportBtn">Export to Admin</button>
+    <button class="btn-secondary" id="pullBtn">Pull Approved</button>
+  </div>
+  
+  <div id="status" class="status"></div>
+  
+  <script>
+    const apiUrlInput = document.getElementById('apiUrl');
+    const exportBtn = document.getElementById('exportBtn');
+    const pullBtn = document.getElementById('pullBtn');
+    const statusDiv = document.getElementById('status');
+    
+    console.log('[v0] UI loaded');
+    
+    // Load saved API URL
+    const savedUrl = localStorage.getItem('textsync_api_url') || '';
+    apiUrlInput.value = savedUrl;
+    console.log('[v0] Loaded saved URL:', savedUrl);
+    
+    // Save API URL on change
+    apiUrlInput.addEventListener('change', () => {
+      const url = apiUrlInput.value.trim();
+      localStorage.setItem('textsync_api_url', url);
+      console.log('[v0] Saved URL:', url);
+    });
+    
+    function showStatus(message, type) {
+      console.log('[v0] Status:', type, message);
+      statusDiv.textContent = message;
+      statusDiv.className = `status show ${type}`;
+    }
+    
+    function hideStatus() {
+      statusDiv.className = 'status';
+    }
+    
+    function setLoading(isLoading) {
+      exportBtn.disabled = isLoading;
+      pullBtn.disabled = isLoading;
+    }
+    
+    exportBtn.addEventListener('click', () => {
+      console.log('[v0] Export button clicked');
+      const apiUrl = apiUrlInput.value.trim();
+      
+      if (!apiUrl) {
+        showStatus('Please enter API URL', 'error');
+        return;
+      }
+      
+      localStorage.setItem('textsync_api_url', apiUrl);
+      
+      hideStatus();
+      setLoading(true);
+      showStatus('Exporting texts...', 'info');
+      
+      console.log('[v0] Sending export message with URL:', apiUrl);
+      parent.postMessage({
+        pluginMessage: { type: 'export', apiUrl }
+      }, '*');
+    });
+    
+    pullBtn.addEventListener('click', () => {
+      console.log('[v0] Pull button clicked');
+      const apiUrl = apiUrlInput.value.trim();
+      
+      if (!apiUrl) {
+        showStatus('Please enter API URL', 'error');
+        return;
+      }
+      
+      localStorage.setItem('textsync_api_url', apiUrl);
+      
+      hideStatus();
+      setLoading(true);
+      showStatus('Pulling approved texts...', 'info');
+      
+      console.log('[v0] Sending pull message with URL:', apiUrl);
+      parent.postMessage({
+        pluginMessage: { type: 'pull', apiUrl }
+      }, '*');
+    });
+    
+    // Handle messages from plugin code
+    window.onmessage = (event) => {
+      console.log('[v0] Received message from plugin:', event.data);
+      const msg = event.data.pluginMessage;
+      
+      if (!msg) {
+        console.log('[v0] No pluginMessage in event');
+        return;
+      }
+      
+      setLoading(false);
+      
+      if (msg.type === 'export-complete') {
+        showStatus(msg.data.message, 'success');
+      } else if (msg.type === 'export-error') {
+        showStatus(`Export failed: ${msg.data.message}`, 'error');
+      } else if (msg.type === 'pull-complete') {
+        showStatus(msg.data.message, 'success');
+      } else if (msg.type === 'pull-error') {
+        showStatus(`Pull failed: ${msg.data.message}`, 'error');
+      }
+    };
+    
+    console.log('[v0] Event listeners attached');
+  </script>
+</body>
+</html>

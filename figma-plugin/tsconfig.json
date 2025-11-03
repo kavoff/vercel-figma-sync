@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["ES2017", "DOM"],
+    "moduleResolution": "Node",
+    "jsx": "react",
+    "outDir": "./",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["@figma/plugin-typings"]
+  },
+  "files": [
+    "code.tsx"
+  ]
+}

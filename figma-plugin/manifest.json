@@ -1,0 +1,12 @@
+{
+  "name": "TextSync",
+  "id": "textsync-plugin",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["*"],
+    "reasoning": "Plugin needs to communicate with the TextSync admin panel API to export and import text content for localization workflow"
+  }
+}
