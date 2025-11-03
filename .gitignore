@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+node_modules/
+figma-plugin/node_modules/
 
 # next.js
 /.next/
