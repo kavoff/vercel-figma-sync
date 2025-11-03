@@ -38,3 +38,6 @@ export type Project = {
 }
 
 export type ProjectInput = Omit<Project, "id" | "created_at" | "updated_at">
+
+// Client-safe project type without sensitive token
+export type ProjectSafe = Omit<Project, "github_token">

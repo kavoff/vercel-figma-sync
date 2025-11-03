@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState } from "react"
 import useSWR from "swr"
-import type { Project } from "@/lib/types"
+import type { ProjectSafe } from "@/lib/types"
 import { ArrowLeft, Plus, Trash2, Check } from "lucide-react"
 import Link from "next/link"
 import {
@@ -23,7 +23,7 @@ import {
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function ProjectsPage() {
-  const { data, mutate, isLoading } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
+  const { data, mutate, isLoading } = useSWR<{ projects: ProjectSafe[] }>("/api/projects", fetcher)
   const [isCreating, setIsCreating] = useState(false)
   const [formData, setFormData] = useState({
     name: "",

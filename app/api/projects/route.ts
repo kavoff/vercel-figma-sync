@@ -11,7 +11,13 @@ export async function GET() {
 
     if (error) throw error
 
-    return NextResponse.json({ projects: data })
+    // Do not expose github_token to the client
+    const safeProjects = (data || []).map((p: any) => {
+      const { github_token, ...rest } = p
+      return rest
+    })
+
+    return NextResponse.json({ projects: safeProjects })
   } catch (error) {
     console.error("[v0] Get projects error:", error)
 
