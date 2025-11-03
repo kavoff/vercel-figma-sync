@@ -1,5 +1,4 @@
 /// <reference types="@figma/plugin-typings" />
-// declare const __html__: string;
 
 // declare const figma: {
 //   root: SceneNode & { children: readonly SceneNode[] }
@@ -46,7 +45,7 @@ function isNodeVisible(node: BaseNode & { visible: boolean }): boolean {
 }
 
 // Collect text nodes within a node tree, respecting visibility
-function collectVisibleTextNodes(root: SceneNode): TextNode[] {
+function collectVisibleTextNodes(root: BaseNode & ChildrenMixin): TextNode[] {
   const nodes = root.findAll(n => n.type === 'TEXT') as TextNode[]
   return nodes.filter(n => isNodeVisible(n))
 }
@@ -62,12 +61,14 @@ function getScopedTextNodes(): TextNode[] {
     // gather from selected containers
     let gathered: TextNode[] = []
     for (const node of selection) {
-      gathered = gathered.concat(collectVisibleTextNodes(node as SceneNode))
+      if ('findAll' in (node as any)) {
+        gathered = gathered.concat(collectVisibleTextNodes(node as unknown as BaseNode & ChildrenMixin))
+      }
     }
     return gathered
   }
   // default to current page only
-  return collectVisibleTextNodes(figma.currentPage as unknown as SceneNode)
+  return collectVisibleTextNodes(figma.currentPage)
 }
 
 // Build a more human key using nearest container/page context

@@ -1,5 +1,4 @@
 /// <reference types="@figma/plugin-typings" />
-// declare const __html__: string;
 // declare const figma: {
 //   root: SceneNode & { children: readonly SceneNode[] }
 //   showUI: (html: string, options?: { width?: number; height?: number }) => void
@@ -55,7 +54,9 @@ function getScopedTextNodes() {
         // gather from selected containers
         let gathered = [];
         for (const node of selection) {
-            gathered = gathered.concat(collectVisibleTextNodes(node));
+            if ('findAll' in node) {
+                gathered = gathered.concat(collectVisibleTextNodes(node));
+            }
         }
         return gathered;
     }
