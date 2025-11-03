@@ -28,24 +28,76 @@ function makeKey(text) {
     const hashStr = Math.abs(hash).toString(36).substring(0, 4);
     return `${slug}_${hashStr}`;
 }
-// Collect all text nodes recursively
-function collectTextNodes(node, textNodes = []) {
-    if (node.type === "TEXT") {
-        textNodes.push(node);
+// Determine if node and all ancestors are visible
+function isNodeVisible(node) {
+    let current = node;
+    while (current) {
+        // @ts-ignore - not all BaseNode have visible, guard with in
+        if (current.visible === false)
+            return false;
+        current = current.parent || null;
     }
-    if ("children" in node) {
-        for (const child of node.children) {
-            collectTextNodes(child, textNodes);
+    return true;
+}
+// Collect text nodes within a node tree, respecting visibility
+function collectVisibleTextNodes(root) {
+    const nodes = root.findAll(n => n.type === 'TEXT');
+    return nodes.filter(n => isNodeVisible(n));
+}
+// Resolve export scope: selection > current page > none
+function getScopedTextNodes() {
+    const selection = figma.currentPage.selection;
+    if (selection && selection.length > 0) {
+        const selectedText = selection.filter(n => n.type === 'TEXT');
+        if (selectedText.length > 0) {
+            return selectedText.filter(n => isNodeVisible(n));
         }
+        // gather from selected containers
+        let gathered = [];
+        for (const node of selection) {
+            gathered = gathered.concat(collectVisibleTextNodes(node));
+        }
+        return gathered;
     }
-    return textNodes;
+    // default to current page only
+    return collectVisibleTextNodes(figma.currentPage);
+}
+// Build a more human key using nearest container/page context
+function makeContextualKey(text, node) {
+    function slugify(s) {
+        return s
+            .toLowerCase()
+            .replace(/[^a-z0-9а-яё]+/gi, "_")
+            .replace(/^_+|_+$/g, "")
+            .slice(0, 30);
+    }
+    // nearest named container
+    let containerName = '';
+    let current = node;
+    while (current) {
+        if ('name' in current && current.type !== 'TEXT' && current.name) {
+            containerName = current.name;
+            break;
+        }
+        current = current.parent || null;
+    }
+    const pageName = figma.currentPage.name;
+    const scope = slugify(containerName || pageName);
+    const base = slugify(text).slice(0, 24);
+    // small hash to ensure uniqueness across duplicates
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        hash = (hash << 5) - hash + text.charCodeAt(i);
+        hash |= 0;
+    }
+    const hashStr = Math.abs(hash).toString(36).slice(0, 4);
+    return `${scope}_${base}_${hashStr}`;
 }
 // Export texts to admin panel
 async function exportTexts(apiUrl) {
     try {
-        // Collect all text nodes
-        // const allTextNodes = collectTextNodes(figma.root)
-        const allTextNodes = figma.root.findAll(n => n.type === 'TEXT');
+        // Collect scoped and visible text nodes
+        const allTextNodes = getScopedTextNodes();
         if (allTextNodes.length === 0) {
             figma.ui.postMessage({
                 type: "export-error",
@@ -65,7 +117,7 @@ async function exportTexts(apiUrl) {
                 key = node.name.substring(2);
             }
             else {
-                key = makeKey(text);
+                key = makeContextualKey(text, node);
                 node.name = `T:${key}`;
             }
             // Group by key for deduplication
@@ -124,9 +176,8 @@ async function pullTexts(apiUrl) {
             });
             return;
         }
-        // Collect all text nodes with keys
-        // const allTextNodes = collectTextNodes(figma.root)
-        const allTextNodes = figma.root.findAll(n => n.type === 'TEXT');
+        // Collect scoped visible text nodes with keys
+        const allTextNodes = getScopedTextNodes();
         let updatedCount = 0;
         for (const node of allTextNodes) {
             if (!node.name.startsWith("T:"))

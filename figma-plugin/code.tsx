@@ -34,27 +34,79 @@ function makeKey(text: string): string {
   return `${slug}_${hashStr}`
 }
 
-// Collect all text nodes recursively
-function collectTextNodes(node: SceneNode, textNodes: TextNode[] = []): TextNode[] {
-  if (node.type === "TEXT") {
-    textNodes.push(node as TextNode)
+// Determine if node and all ancestors are visible
+function isNodeVisible(node: BaseNode & { visible: boolean }): boolean {
+  let current: BaseNode | null = node
+  while (current) {
+    // @ts-ignore - not all BaseNode have visible, guard with in
+    if ((current as any).visible === false) return false
+    current = (current as any).parent || null
   }
+  return true
+}
 
-  if ("children" in node) {
-    for (const child of node.children) {
-      collectTextNodes(child, textNodes)
+// Collect text nodes within a node tree, respecting visibility
+function collectVisibleTextNodes(root: SceneNode): TextNode[] {
+  const nodes = root.findAll(n => n.type === 'TEXT') as TextNode[]
+  return nodes.filter(n => isNodeVisible(n))
+}
+
+// Resolve export scope: selection > current page > none
+function getScopedTextNodes(): TextNode[] {
+  const selection = figma.currentPage.selection
+  if (selection && selection.length > 0) {
+    const selectedText = selection.filter(n => n.type === 'TEXT') as TextNode[]
+    if (selectedText.length > 0) {
+      return selectedText.filter(n => isNodeVisible(n))
     }
+    // gather from selected containers
+    let gathered: TextNode[] = []
+    for (const node of selection) {
+      gathered = gathered.concat(collectVisibleTextNodes(node as SceneNode))
+    }
+    return gathered
   }
+  // default to current page only
+  return collectVisibleTextNodes(figma.currentPage as unknown as SceneNode)
+}
 
-  return textNodes
+// Build a more human key using nearest container/page context
+function makeContextualKey(text: string, node: SceneNode): string {
+  function slugify(s: string): string {
+    return s
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 30)
+  }
+  // nearest named container
+  let containerName = ''
+  let current: BaseNode | null = node
+  while (current) {
+    if ('name' in current && current.type !== 'TEXT' && (current as any).name) {
+      containerName = (current as any).name
+      break
+    }
+    current = (current as any).parent || null
+  }
+  const pageName = figma.currentPage.name
+  const scope = slugify(containerName || pageName)
+  const base = slugify(text).slice(0, 24)
+  // small hash to ensure uniqueness across duplicates
+  let hash = 0
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i)
+    hash |= 0
+  }
+  const hashStr = Math.abs(hash).toString(36).slice(0, 4)
+  return `${scope}_${base}_${hashStr}`
 }
 
 // Export texts to admin panel
 async function exportTexts(apiUrl: string) {
   try {
-    // Collect all text nodes
-    // const allTextNodes = collectTextNodes(figma.root)
-    const allTextNodes = figma.root.findAll(n => n.type === 'TEXT') as TextNode[];
+    // Collect scoped and visible text nodes
+    const allTextNodes = getScopedTextNodes()
 
     if (allTextNodes.length === 0) {
       figma.ui.postMessage({
@@ -76,7 +128,7 @@ async function exportTexts(apiUrl: string) {
       if (node.name.startsWith("T:")) {
         key = node.name.substring(2)
       } else {
-        key = makeKey(text)
+        key = makeContextualKey(text, node)
         node.name = `T:${key}`
       }
 
@@ -144,9 +196,8 @@ async function pullTexts(apiUrl: string) {
       return
     }
 
-    // Collect all text nodes with keys
-    // const allTextNodes = collectTextNodes(figma.root)
-    const allTextNodes = figma.root.findAll(n => n.type === 'TEXT') as TextNode[];
+    // Collect scoped visible text nodes with keys
+    const allTextNodes = getScopedTextNodes()
     let updatedCount = 0
 
     for (const node of allTextNodes) {

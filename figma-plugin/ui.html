@@ -154,17 +154,7 @@
     
     console.log('[v0] UI loaded');
     
-    // Load saved API URL
-    const savedUrl = localStorage.getItem('textsync_api_url') || '';
-    apiUrlInput.value = savedUrl;
-    console.log('[v0] Loaded saved URL:', savedUrl);
-    
-    // Save API URL on change
-    apiUrlInput.addEventListener('change', () => {
-      const url = apiUrlInput.value.trim();
-      localStorage.setItem('textsync_api_url', url);
-      console.log('[v0] Saved URL:', url);
-    });
+    // The plugin code will send a saved URL via figma.clientStorage
     
     function showStatus(message, type) {
       console.log('[v0] Status:', type, message);
@@ -190,8 +180,6 @@
         return;
       }
       
-      localStorage.setItem('textsync_api_url', apiUrl);
-      
       hideStatus();
       setLoading(true);
       showStatus('Exporting texts...', 'info');
@@ -210,8 +198,6 @@
         showStatus('Please enter API URL', 'error');
         return;
       }
-      
-      localStorage.setItem('textsync_api_url', apiUrl);
       
       hideStatus();
       setLoading(true);
@@ -233,8 +219,17 @@
         return;
       }
       
+      if (msg.type === 'load-api-url') {
+        // Pre-fill API URL from plugin persistent storage
+        if (msg.apiUrl && typeof msg.apiUrl === 'string') {
+          apiUrlInput.value = msg.apiUrl;
+          console.log('[v0] Pre-filled API URL from plugin storage');
+        }
+        return;
+      }
+
       setLoading(false);
-      
+
       if (msg.type === 'export-complete') {
         showStatus(msg.data.message, 'success');
       } else if (msg.type === 'export-error') {

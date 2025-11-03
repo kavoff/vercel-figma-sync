@@ -41,3 +41,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch texts" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const keys: string[] = Array.isArray(body?.keys) ? body.keys : []
+    if (!keys.length) {
+      return NextResponse.json({ error: "No keys provided" }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase.from("texts").delete().in("key", keys)
+    if (error) throw error
+
+    return NextResponse.json({ success: true, deleted: keys.length })
+  } catch (error) {
+    console.error("[v0] Delete texts error:", error)
+    return NextResponse.json({ error: "Failed to delete texts" }, { status: 500 })
+  }
+}

@@ -9,13 +9,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { key } = await params
     const body = await request.json()
-    const { value, status } = body
+    const { value, status, key: newKey } = body
 
     const supabase = await createClient()
 
     const updateData: Record<string, unknown> = {}
     if (value !== undefined) updateData.value = value
     if (status !== undefined) updateData.status = status
+    if (newKey && typeof newKey === "string") updateData.key = newKey
 
     const { data, error } = await supabase.from("texts").update(updateData).eq("key", key).select().single()
 

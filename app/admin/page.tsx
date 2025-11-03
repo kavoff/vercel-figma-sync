@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import useSWR from "swr"
-import type { TextKey, TextStatus, Project } from "@/lib/types"
+import type { TextKey, TextStatus, ProjectSafe as Project } from "@/lib/types"
 import { EditTextDialog } from "@/components/edit-text-dialog"
 import { useRouter } from "next/navigation"
 import { Download, LogOut, Search, Settings, FolderOpen } from "lucide-react"
@@ -17,19 +17,18 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all") // Added category filter state
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = useState("")
   const [editingText, setEditingText] = useState<TextKey | null>(null)
   const router = useRouter()
 
   const queryParams = new URLSearchParams()
   if (statusFilter !== "all") queryParams.set("status", statusFilter)
-  if (categoryFilter !== "all") queryParams.set("category", categoryFilter) // Added category to query params
   if (searchQuery) queryParams.set("q", searchQuery)
 
   const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(`/api/texts?${queryParams.toString()}`, fetcher)
   const { data: projectsData } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
-  const { data: categoriesData } = useSWR<{ categories: string[] }>("/api/texts/categories", fetcher) // Fetch categories
+  // categories are not used anymore
 
   const activeProject = projectsData?.projects.find((p) => p.is_active)
 
@@ -50,12 +49,47 @@ export default function AdminPage() {
   }
 
   const getStatusBadge = (status: TextStatus) => {
-    const variants: Record<TextStatus, "default" | "secondary" | "outline"> = {
-      draft: "secondary",
-      in_review: "default",
-      approved: "outline",
-    }
-    return <Badge variant={variants[status]}>{status}</Badge>
+    // grey (draft), yellow (in_review), green (approved)
+    const label = status === "draft" ? "Draft" : status === "in_review" ? "To review" : "Done"
+    const className =
+      status === "draft"
+        ? "bg-muted text-foreground"
+        : status === "in_review"
+        ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+        : "bg-green-100 text-green-800 border border-green-300"
+    return <Badge className={className}>{label}</Badge>
+  }
+
+  const updateText = async (key: string, updates: Partial<Pick<TextKey, "key" | "value" | "status">>) => {
+    await fetch(`/api/texts/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    })
+  }
+
+  let saveTimer: any
+  const scheduleSave = (key: string, updates: Partial<Pick<TextKey, "key" | "value" | "status">>) => {
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(async () => {
+      await updateText(key, updates)
+      mutate()
+    }, 400)
+  }
+
+  const toggleSelected = (k: string, checked: boolean) => {
+    setSelected((prev) => ({ ...prev, [k]: checked }))
+  }
+
+  const deleteSelected = async () => {
+    const keys = Object.entries(selected)
+      .filter(([, v]) => v)
+      .map(([k]) => k)
+    if (keys.length === 0) return
+    if (!confirm(`Delete ${keys.length} item(s)?`)) return
+    await fetch("/api/texts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keys }) })
+    setSelected({})
+    mutate()
   }
 
   return (
@@ -100,22 +134,9 @@ export default function AdminPage() {
               className="pl-9"
             />
           </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categoriesData?.categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="h-3 w-3" />
-                    {cat}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Button variant="destructive" onClick={deleteSelected} disabled={Object.values(selected).every((v) => !v)}>
+            Delete selected
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
@@ -136,7 +157,7 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead> {/* Added category column */}
+                  <TableHead className="w-10"></TableHead>
                   <TableHead>Key</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Status</TableHead>
@@ -155,20 +176,54 @@ export default function AdminPage() {
                   data?.texts.map((text) => (
                     <TableRow key={text.key}>
                       <TableCell>
-                        <Badge variant="secondary" className="font-mono text-xs">
-                          {text.category}
-                        </Badge>
+                        <input type="checkbox" checked={!!selected[text.key]} onChange={(e) => toggleSelected(text.key, e.target.checked)} />
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{text.key}</TableCell>
-                      <TableCell className="max-w-md truncate">{text.value}</TableCell>
-                      <TableCell>{getStatusBadge(text.status)}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <Input
+                          value={text.key}
+                          onChange={(e) => {
+                            const newKey = e.target.value
+                            // optimistic local update
+                            text.key = newKey
+                            // schedule save: update key -> also set status to in_review
+                            scheduleSave(text.key, { key: newKey, status: "in_review" })
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        <Input
+                          value={text.value}
+                          onChange={(e) => {
+                            const newVal = e.target.value
+                            text.value = newVal
+                            scheduleSave(text.key, { value: newVal, status: "in_review" })
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(text.status)}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(text.updated_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setEditingText(text)}>
-                          Edit
-                        </Button>
+                        <Select
+                          value={text.status}
+                          onValueChange={async (v) => {
+                            const newStatus = v as TextStatus
+                            await updateText(text.key, { status: newStatus })
+                            mutate()
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Change status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="in_review">To review</SelectItem>
+                            <SelectItem value="approved">Done</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   ))
@@ -179,16 +234,6 @@ export default function AdminPage() {
         )}
       </main>
 
-      {editingText && (
-        <EditTextDialog
-          text={editingText}
-          onClose={() => setEditingText(null)}
-          onSave={() => {
-            mutate()
-            setEditingText(null)
-          }}
-        />
-      )}
     </div>
   )
 }
