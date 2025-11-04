@@ -50,9 +50,13 @@ export default function AdminPage() {
   }
 
   const getStatusBadge = (statusEn?: TextStatus, statusRu?: TextStatus) => {
-    const rank = (s?: TextStatus) => (s === "in_review" ? 0 : s === "draft" ? 1 : s === "approved" ? 2 : 3)
-    const best = rank(statusEn) <= rank(statusRu) ? statusEn : statusRu
-    const s = (best || statusEn || statusRu || "draft") as TextStatus
+    // Rule: if both approved -> Done; else if any in_review -> To review; else if any draft -> Draft
+    const sEn = statusEn || "draft"
+    const sRu = statusRu || "draft"
+    let s: TextStatus = "draft"
+    if (sEn === "approved" && sRu === "approved") s = "approved"
+    else if (sEn === "in_review" || sRu === "in_review") s = "in_review"
+    else if (sEn === "draft" || sRu === "draft") s = "draft"
     const label = s === "draft" ? "Draft" : s === "in_review" ? "To review" : "Done"
     const className =
       s === "draft"
@@ -76,10 +80,10 @@ export default function AdminPage() {
   const markedRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncMarked?: Record<string, boolean> }
   if (!markedRef.__textsyncMarked) markedRef.__textsyncMarked = {}
 
-  const scheduleSave = (key: string, updates: Record<string, unknown>, delay = 800) => {
+  const scheduleSave = (timerKey: string, updates: Record<string, unknown>, delay = 800) => {
     const timers = timersRef.__textsyncTimers!
-    if (timers[key]) clearTimeout(timers[key])
-    timers[key] = setTimeout(async () => {
+    if (timers[timerKey]) clearTimeout(timers[timerKey])
+    timers[timerKey] = setTimeout(async () => {
       await updateText(key, updates)
       // no immediate mutate to avoid UI jank
     }, delay)
@@ -276,7 +280,7 @@ export default function AdminPage() {
                               markedRef.__textsyncMarked![text.key] = true
                               await updateText(text.key, { status: "in_review", lang: "en" })
                             }
-                            scheduleSave(text.key, { value: newVal, lang: "en" } as any)
+                            scheduleSave(text.key + ":en", { value: newVal, lang: "en" } as any)
                           }}
                           onBlur={async (e) => {
                             const newVal = e.target.value
@@ -293,7 +297,7 @@ export default function AdminPage() {
                               markedRef.__textsyncMarked![text.key + ":ru"] = true
                               await updateText(text.key, { status: "in_review", lang: "ru" })
                             }
-                            scheduleSave(text.key, { value: newVal, lang: "ru" } as any)
+                            scheduleSave(text.key + ":ru", { value: newVal, lang: "ru" } as any)
                           }}
                           onBlur={async (e) => {
                             const newVal = e.target.value
