@@ -13,7 +13,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Determine active project for scoping
-    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).maybeSingle()
+    const { data: activeProject } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     if (!activeProject?.id) {
       return NextResponse.json({ error: "No active project selected" }, { status: 400 })

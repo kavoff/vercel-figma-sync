@@ -12,7 +12,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Scope to active project
-    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).maybeSingle()
+    const { data: activeProject } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     let query = supabase
       .from("texts")
