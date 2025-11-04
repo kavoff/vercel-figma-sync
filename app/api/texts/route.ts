@@ -20,27 +20,16 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle()
 
+    // Fetch both EN and RU for grouping by key
     let query = supabase
       .from("texts")
-      .select("*")
-      .eq("lang", lang)
+      .select("key, value, lang, status, updated_at, project_id")
       .order("updated_at", { ascending: false })
 
-    if (activeProject?.id) {
-      query = query.eq("project_id", activeProject.id)
-    }
-
-    if (status) {
-      query = query.eq("status", status)
-    }
-
-    if (category && category !== "all") {
-      query = query.eq("category", category)
-    }
-
-    if (q) {
-      query = query.or(`key.ilike.%${q}%,value.ilike.%${q}%`)
-    }
+    if (activeProject?.id) query = query.eq("project_id", activeProject.id)
+    if (status) query = query.eq("status", status)
+    if (category && category !== "all") query = query.eq("category", category)
+    if (q) query = query.or(`key.ilike.%${q}%,value.ilike.%${q}%`)
 
     const { data, error } = await query
 
@@ -48,17 +37,31 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    // Client wants: Review (in_review) on top, then Draft, then Done (approved)
+    // Group rows by key into combined entry with en/ru
+    const map = new Map<string, any>()
+    for (const row of data || []) {
+      const entry = map.get(row.key) || { key: row.key, value_en: "", value_ru: "", status_en: "draft", status_ru: "draft", updated_at: row.updated_at }
+      if (row.lang === "en") {
+        entry.value_en = row.value
+        entry.status_en = row.status
+      } else if (row.lang === "ru") {
+        entry.value_ru = row.value
+        entry.status_ru = row.status
+      }
+      if (new Date(row.updated_at).getTime() > new Date(entry.updated_at).getTime()) entry.updated_at = row.updated_at
+      map.set(row.key, entry)
+    }
+
+    const combined = Array.from(map.values())
     const statusOrder: Record<string, number> = { in_review: 0, draft: 1, approved: 2 }
-    const sorted = (data || []).slice().sort((a: any, b: any) => {
-      const sa = statusOrder[a.status] ?? 3
-      const sb = statusOrder[b.status] ?? 3
-      if (sa !== sb) return sa - sb
-      // within same status, sort by updated_at desc
+    combined.sort((a, b) => {
+      const aRank = Math.min(statusOrder[a.status_en] ?? 3, statusOrder[a.status_ru] ?? 3)
+      const bRank = Math.min(statusOrder[b.status_en] ?? 3, statusOrder[b.status_ru] ?? 3)
+      if (aRank !== bRank) return aRank - bRank
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     })
 
-    return NextResponse.json({ texts: sorted })
+    return NextResponse.json({ texts: combined })
   } catch (error) {
     console.error("[v0] Get texts error:", error)
     return NextResponse.json({ error: "Failed to fetch texts" }, { status: 500 })

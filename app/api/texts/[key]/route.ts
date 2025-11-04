@@ -9,7 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { key } = await params
     const body = await request.json()
-    const { value, status, key: newKey } = body
+    const { value, status, key: newKey, lang } = body
 
     const supabase = await createClient()
 
@@ -22,12 +22,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (newKey && typeof newKey === "string") updateData.key = newKey
     if (activeProject?.id) (updateData as any).project_id = activeProject.id
 
-    const { data, error } = await supabase
+    const updateQuery = supabase
       .from("texts")
       .update(updateData)
       .eq("key", key)
+      .eq(activeProject?.id ? "project_id" : "key", activeProject?.id ?? key)
+      .eq(lang ? "lang" : "key", lang ?? key)
       .select()
       .single()
+
+    const { data, error } = await updateQuery
+
+    if (!data && lang && activeProject?.id) {
+      // No row to update; create missing lang row
+      const { data: inserted, error: insertError } = await supabase
+        .from("texts")
+        .insert({ key: newKey || key, value, status: status ?? "in_review", lang, project_id: activeProject.id, sources: {}, category: "uncategorized" })
+        .select()
+        .single()
+      if (insertError) throw insertError
+      return NextResponse.json({ text: inserted })
+    }
 
     if (error) {
       throw error

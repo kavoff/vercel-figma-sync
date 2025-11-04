@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import useSWR from "swr"
-import type { TextKey, TextStatus, ProjectSafe as Project } from "@/lib/types"
+import type { TextStatus, ProjectSafe as Project } from "@/lib/types"
 import { EditTextDialog } from "@/components/edit-text-dialog"
 import { useRouter } from "next/navigation"
 import { Download, LogOut, Search, Settings, FolderOpen } from "lucide-react"
@@ -26,7 +26,7 @@ export default function AdminPage() {
   if (statusFilter !== "all") queryParams.set("status", statusFilter)
   if (searchQuery) queryParams.set("q", searchQuery)
 
-  const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(`/api/texts?${queryParams.toString()}`, fetcher)
+  const { data, mutate, isLoading } = useSWR<{ texts: Array<{ key: string; value_en?: string; value_ru?: string; status_en?: TextStatus; status_ru?: TextStatus; updated_at: string }> }>(`/api/texts?${queryParams.toString()}`, fetcher)
   const { data: projectsData } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
   // categories are not used anymore
 
@@ -61,7 +61,7 @@ export default function AdminPage() {
     return <Badge className={className}>{label}</Badge>
   }
 
-  const updateText = async (key: string, updates: Partial<Pick<TextKey, "key" | "value" | "status">>) => {
+  const updateText = async (key: string, updates: { key?: string; value?: string; status?: TextStatus; lang?: "en" | "ru" }) => {
     await fetch(`/api/texts/${encodeURIComponent(key)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -139,7 +139,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold">TextSync Admin</h1>
             {activeProject && (
               <p className="text-sm text-muted-foreground mt-1">
-                Active: {activeProject.name} → {activeProject.github_owner}/{activeProject.github_repo}
+                Active: {activeProject.name} → {activeProject.github_owner}/{activeProject.github_repo} · {activeProject.github_path}
               </p>
             )}
           </div>
@@ -265,19 +265,36 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell className="max-w-md">
                         <Input
-                          defaultValue={text.value}
+                          defaultValue={text.value_en || ""}
                           onChange={async (e) => {
                             const newVal = e.target.value
                             // mark status once per row
                             if (!markedRef.__textsyncMarked![text.key]) {
                               markedRef.__textsyncMarked![text.key] = true
-                              await updateText(text.key, { status: "in_review" })
+                              await updateText(text.key, { status: "in_review", lang: "en" })
                             }
-                            scheduleSave(text.key, { value: newVal })
+                            scheduleSave(text.key, { value: newVal, lang: "en" } as any)
                           }}
                           onBlur={async (e) => {
                             const newVal = e.target.value
-                            await updateText(text.key, { value: newVal })
+                            await updateText(text.key, { value: newVal, lang: "en" })
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        <Input
+                          defaultValue={text.value_ru || ""}
+                          onChange={async (e) => {
+                            const newVal = e.target.value
+                            if (!markedRef.__textsyncMarked![text.key + ":ru"]) {
+                              markedRef.__textsyncMarked![text.key + ":ru"] = true
+                              await updateText(text.key, { status: "in_review", lang: "ru" })
+                            }
+                            scheduleSave(text.key, { value: newVal, lang: "ru" } as any)
+                          }}
+                          onBlur={async (e) => {
+                            const newVal = e.target.value
+                            await updateText(text.key, { value: newVal, lang: "ru" })
                           }}
                         />
                       </TableCell>

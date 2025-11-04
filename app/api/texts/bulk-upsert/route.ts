@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const results = []
 
     for (const item of texts) {
-      const { key, value, category, sources } = item
+      const { key, value, category, sources, lang } = item
 
       // Check if key exists within project scope
       const { data: existing } = await supabase
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
             key,
             value,
             category: category || "uncategorized",
-            lang: "ru",
+            lang: lang || "en",
             status: "draft",
             sources: sources || {},
             project_id: activeProject.id,
