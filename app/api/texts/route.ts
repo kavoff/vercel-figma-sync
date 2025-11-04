@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
       .from("texts")
       .select("*")
       .eq("lang", lang)
-      .order("category")
       .order("updated_at", { ascending: false })
 
     if (status) {
@@ -35,7 +34,17 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
-    return NextResponse.json({ texts: data || [] })
+    // Client wants: Review (in_review) on top, then Draft, then Done (approved)
+    const statusOrder: Record<string, number> = { in_review: 0, draft: 1, approved: 2 }
+    const sorted = (data || []).slice().sort((a: any, b: any) => {
+      const sa = statusOrder[a.status] ?? 3
+      const sb = statusOrder[b.status] ?? 3
+      if (sa !== sb) return sa - sb
+      // within same status, sort by updated_at desc
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
+
+    return NextResponse.json({ texts: sorted })
   } catch (error) {
     console.error("[v0] Get texts error:", error)
     return NextResponse.json({ error: "Failed to fetch texts" }, { status: 500 })

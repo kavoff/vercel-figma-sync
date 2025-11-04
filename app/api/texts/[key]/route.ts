@@ -24,36 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       throw error
     }
 
-    if (status === "approved") {
-      const { data: approvedTexts } = await supabase
-        .from("texts")
-        .select("key, value")
-        .eq("status", "approved")
-        .eq("lang", "ru")
-
-      if (approvedTexts) {
-        const jsonContent: Record<string, string> = {}
-        approvedTexts.forEach((text) => {
-          jsonContent[text.key] = text.value
-        })
-
-        const { data: activeProject } = await supabase.from("projects").select("*").eq("is_active", true).single()
-
-        const githubConfig = activeProject
-          ? {
-              token: activeProject.github_token,
-              owner: activeProject.github_owner,
-              repo: activeProject.github_repo,
-              branch: activeProject.github_branch,
-              path: activeProject.github_path,
-            }
-          : null
-
-        syncToGitHub(jsonContent, githubConfig).catch((err) => {
-          console.error("[v0] GitHub sync failed:", err)
-        })
-      }
-    }
+    // Auto GitHub sync removed; use manual sync endpoint instead
 
     return NextResponse.json({ text: data })
   } catch (error) {

@@ -111,6 +111,8 @@ async function exportTexts(apiUrl: string) {
   try {
     // Collect scoped and visible text nodes
     const allTextNodes = getScopedTextNodes()
+    const scopeInfo = figma.currentPage.name + (figma.currentPage.selection.length ? ` (selection x${figma.currentPage.selection.length})` : " (page)")
+    console.log(`[TextSync] Scope: ${scopeInfo}, found text nodes: ${allTextNodes.length}`)
 
     if (allTextNodes.length === 0) {
       figma.ui.postMessage({
@@ -202,6 +204,8 @@ async function pullTexts(apiUrl: string) {
 
     // Collect scoped visible text nodes with keys
     const allTextNodes = getScopedTextNodes()
+    const scopeInfo = figma.currentPage.name + (figma.currentPage.selection.length ? ` (selection x${figma.currentPage.selection.length})` : " (page)")
+    console.log(`[TextSync] Pull scope: ${scopeInfo}, text nodes considered: ${allTextNodes.length}`)
     let updatedCount = 0
 
     for (const node of allTextNodes) {

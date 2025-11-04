@@ -31,6 +31,7 @@ export default function AdminPage() {
   // categories are not used anymore
 
   const activeProject = projectsData?.projects.find((p) => p.is_active)
+  const [syncLoading, setSyncLoading] = useState(false)
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -110,6 +111,21 @@ export default function AdminPage() {
             )}
           </div>
           <div className="flex gap-2">
+            <Button onClick={async () => {
+              try {
+                setSyncLoading(true)
+                const res = await fetch("/api/sync/github?lang=ru", { method: "POST" })
+                if (!res.ok) throw new Error("Sync failed")
+                const data = await res.json()
+                alert(`Synced ${data.count ?? 0} items to GitHub`)
+              } catch (e) {
+                alert("Failed to sync to GitHub")
+              } finally {
+                setSyncLoading(false)
+              }
+            }} variant="default" size="sm" disabled={syncLoading || !activeProject}>
+              {syncLoading ? "Syncing..." : "Sync to GitHub"}
+            </Button>
             <Link href="/admin/projects">
               <Button variant="outline" size="sm">
                 <Settings className="h-4 w-4 mr-2" />
