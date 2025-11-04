@@ -80,11 +80,11 @@ export default function AdminPage() {
   const markedRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncMarked?: Record<string, boolean> }
   if (!markedRef.__textsyncMarked) markedRef.__textsyncMarked = {}
 
-  const scheduleSave = (timerKey: string, updates: Record<string, unknown>, delay = 800) => {
+  const scheduleSave = (saveKey: string, timerKey: string, updates: Record<string, unknown>, delay = 800) => {
     const timers = timersRef.__textsyncTimers!
     if (timers[timerKey]) clearTimeout(timers[timerKey])
     timers[timerKey] = setTimeout(async () => {
-      await updateText(key, updates)
+      await updateText(saveKey, updates)
       // no immediate mutate to avoid UI jank
     }, delay)
   }
@@ -280,7 +280,7 @@ export default function AdminPage() {
                               markedRef.__textsyncMarked![text.key] = true
                               await updateText(text.key, { status: "in_review", lang: "en" })
                             }
-                            scheduleSave(text.key + ":en", { value: newVal, lang: "en" } as any)
+                            scheduleSave(text.key, text.key + ":en", { value: newVal, lang: "en" } as any)
                           }}
                           onBlur={async (e) => {
                             const newVal = e.target.value
@@ -297,7 +297,7 @@ export default function AdminPage() {
                               markedRef.__textsyncMarked![text.key + ":ru"] = true
                               await updateText(text.key, { status: "in_review", lang: "ru" })
                             }
-                            scheduleSave(text.key + ":ru", { value: newVal, lang: "ru" } as any)
+                            scheduleSave(text.key, text.key + ":ru", { value: newVal, lang: "ru" } as any)
                           }}
                           onBlur={async (e) => {
                             const newVal = e.target.value
