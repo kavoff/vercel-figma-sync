@@ -12,14 +12,17 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Scope to active project
-    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).single()
+    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).maybeSingle()
 
     let query = supabase
       .from("texts")
       .select("*")
       .eq("lang", lang)
-      .eq(activeProject ? "project_id" : "lang", activeProject ? activeProject.id : lang) // if no project table yet, keep working
       .order("updated_at", { ascending: false })
+
+    if (activeProject?.id) {
+      query = query.eq("project_id", activeProject.id)
+    }
 
     if (status) {
       query = query.eq("status", status)

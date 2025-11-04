@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Determine active project for scoping
-    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).single()
+    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).maybeSingle()
+
+    if (!activeProject?.id) {
+      return NextResponse.json({ error: "No active project selected" }, { status: 400 })
+    }
     const results = []
 
     for (const item of texts) {
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
         .from("texts")
         .select("*")
         .eq("key", key)
-        .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
+        .eq("project_id", activeProject.id)
         .single()
 
       if (!existing) {
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
             lang: "ru",
             status: "draft",
             sources: sources || {},
-            ...(activeProject ? { project_id: activeProject.id } : {}),
+            project_id: activeProject.id,
           })
           .select()
           .single()
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
             sources: sources || existing.sources,
           })
           .eq("key", key)
-          .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
+          .eq("project_id", activeProject.id)
           .select()
           .single()
 
@@ -74,7 +78,7 @@ export async function POST(request: NextRequest) {
             sources: sources || existing.sources,
           })
           .eq("key", key)
-          .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
+          .eq("project_id", activeProject.id)
           .select()
           .single()
 
