@@ -13,12 +13,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const supabase = await createClient()
 
+    // Ensure project scoping: attach project_id if missing
+    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).maybeSingle()
+
     const updateData: Record<string, unknown> = {}
     if (value !== undefined) updateData.value = value
     if (status !== undefined) updateData.status = status
     if (newKey && typeof newKey === "string") updateData.key = newKey
+    if (activeProject?.id) (updateData as any).project_id = activeProject.id
 
-    const { data, error } = await supabase.from("texts").update(updateData).eq("key", key).select().single()
+    const { data, error } = await supabase
+      .from("texts")
+      .update(updateData)
+      .eq("key", key)
+      .select()
+      .single()
 
     if (error) {
       throw error
