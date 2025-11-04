@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     await requireAuth()
 
     const searchParams = request.nextUrl.searchParams
-    const lang = searchParams.get("lang") || "ru"
+    const mode = searchParams.get("mode") || "both"
 
     const supabase = await createClient()
 
@@ -28,63 +28,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No active project configured" }, { status: 400 })
     }
 
-    // Load texts to sync
+    // Load texts to sync — BOTH mode writes EN as key and RU as key_ru in a single file
     let jsonContent: Record<string, string> = {}
+    const cfg = {
+      token: activeProject.github_token,
+      owner: activeProject.github_owner,
+      repo: activeProject.github_repo,
+      branch: activeProject.github_branch,
+      path: activeProject.github_path,
+    }
+    const { getFileContent, createOrUpdateFile } = await import("@/lib/github")
+    const existing = await getFileContent(cfg)
+    try {
+      jsonContent = existing?.content ? JSON.parse(existing.content) : {}
+    } catch {
+      jsonContent = {}
+    }
+
     if (keys && keys.length > 0) {
-      // Partial: fetch only provided keys in active project
+      // Partial: fetch both langs for selected keys
       const { data: rows, error } = await supabase
         .from("texts")
-        .select("key, value")
-        .eq("lang", lang)
+        .select("key, value, lang, status")
         .eq("project_id", activeProject.id)
         .in("key", keys)
       if (error) throw error
-      // Merge into existing file content
-      const cfg = {
-        token: activeProject.github_token,
-        owner: activeProject.github_owner,
-        repo: activeProject.github_repo,
-        branch: activeProject.github_branch,
-        path: activeProject.github_path,
+      let count = 0
+      for (const r of rows || []) {
+        if (r.status !== "approved") continue
+        if (r.lang === "en") {
+          jsonContent[r.key] = r.value
+          count++
+        } else if (r.lang === "ru") {
+          jsonContent[`${r.key}_ru`] = r.value
+          count++
+        }
       }
-      // Get existing file to merge
-      const { getFileContent, createOrUpdateFile } = await import("@/lib/github")
-      const existing = await getFileContent(cfg)
-      try {
-        jsonContent = existing?.content ? JSON.parse(existing.content) : {}
-      } catch {
-        jsonContent = {}
-      }
-      for (const r of rows || []) jsonContent[r.key] = r.value
-      // Write merged content back
-      await createOrUpdateFile(cfg, JSON.stringify(jsonContent, null, 2), "Partial update from TextSync", existing?.sha)
-      return NextResponse.json({ success: true, count: keys.length, mode: "partial" })
+      await createOrUpdateFile(cfg, JSON.stringify(jsonContent, null, 2), "Partial update (both) from TextSync", existing?.sha)
+      return NextResponse.json({ success: true, count, mode: "partial-both" })
     } else {
-      // Full: merge approved with existing file (do NOT drop untouched keys)
-      const { data: approvedTexts, error: textsError } = await supabase
+      // Full: fetch approved for both langs and merge
+      const { data: rows, error: textsError } = await supabase
         .from("texts")
-        .select("key, value")
-        .eq("status", "approved")
-        .eq("lang", lang)
+        .select("key, value, lang, status")
         .eq("project_id", activeProject.id)
       if (textsError) throw textsError
-      const cfg = {
-        token: activeProject.github_token,
-        owner: activeProject.github_owner,
-        repo: activeProject.github_repo,
-        branch: activeProject.github_branch,
-        path: activeProject.github_path,
+      let count = 0
+      for (const r of rows || []) {
+        if (r.status !== "approved") continue
+        if (r.lang === "en") {
+          jsonContent[r.key] = r.value
+          count++
+        } else if (r.lang === "ru") {
+          jsonContent[`${r.key}_ru`] = r.value
+          count++
+        }
       }
-      const { getFileContent, createOrUpdateFile } = await import("@/lib/github")
-      const existing = await getFileContent(cfg)
-      try {
-        jsonContent = existing?.content ? JSON.parse(existing.content) : {}
-      } catch {
-        jsonContent = {}
-      }
-      for (const t of approvedTexts || []) jsonContent[t.key] = t.value
-      await createOrUpdateFile(cfg, JSON.stringify(jsonContent, null, 2), "Merge approved texts from TextSync", existing?.sha)
-      return NextResponse.json({ success: true, count: (approvedTexts || []).length, mode: "full-merge" })
+      await createOrUpdateFile(cfg, JSON.stringify(jsonContent, null, 2), "Merge approved (both) from TextSync", existing?.sha)
+      return NextResponse.json({ success: true, count, mode: "full-both" })
     }
   } catch (error) {
     console.error("[v0] Manual GitHub sync error:", error)

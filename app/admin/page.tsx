@@ -116,7 +116,7 @@ export default function AdminPage() {
     if (!keys.length) return
     setSyncLoading(true)
     try {
-      const res = await fetch("/api/sync/github?lang=ru", {
+      const res = await fetch("/api/sync/github?mode=both", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keys }),
@@ -147,7 +147,7 @@ export default function AdminPage() {
             <Button onClick={async () => {
               try {
                 setSyncLoading(true)
-                const res = await fetch("/api/sync/github?lang=ru", { method: "POST" })
+                const res = await fetch("/api/sync/github?mode=both", { method: "POST" })
                 if (!res.ok) throw new Error("Sync failed")
                 const data = await res.json()
                 alert(`Synced ${data.count ?? 0} items to GitHub`)
@@ -232,7 +232,8 @@ export default function AdminPage() {
                     />
                   </TableHead>
                   <TableHead>Key</TableHead>
-                  <TableHead>Value</TableHead>
+                  <TableHead>Value (EN)</TableHead>
+                  <TableHead>Value (RU)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
