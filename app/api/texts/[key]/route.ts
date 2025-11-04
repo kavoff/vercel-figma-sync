@@ -22,16 +22,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (newKey && typeof newKey === "string") updateData.key = newKey
     if (activeProject?.id) (updateData as any).project_id = activeProject.id
 
-    const updateQuery = supabase
+    let updateBuilder = supabase
       .from("texts")
       .update(updateData)
       .eq("key", key)
       .eq(activeProject?.id ? "project_id" : "key", activeProject?.id ?? key)
-      .eq(lang ? "lang" : "key", lang ?? key)
-      .select()
-      .single()
 
-    const { data, error } = await updateQuery
+    if (lang) {
+      updateBuilder = updateBuilder.eq("lang", lang)
+    }
+
+    const { data, error } = await updateBuilder.select()
 
     if (!data && lang && activeProject?.id) {
       // No row to update; create missing lang row
@@ -50,7 +51,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Auto GitHub sync removed; use manual sync endpoint instead
 
-    return NextResponse.json({ text: data })
+    if (!lang) {
+      // updated all rows for this key in active project
+      return NextResponse.json({ success: true })
+    }
+
+    return NextResponse.json({ text: Array.isArray(data) ? data[0] : data })
   } catch (error) {
     console.error("[v0] Update text error:", error)
 
