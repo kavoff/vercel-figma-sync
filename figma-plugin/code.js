@@ -138,7 +138,7 @@ async function exportTexts(apiUrl) {
         const texts = Array.from(textsMap.values()).map(({ key, value }) => ({
             key,
             value,
-            lang: "ru",
+            lang: "en",
             sources: [{ type: "figma", file: figma.currentPage.name }],
         }));
         // Send to API

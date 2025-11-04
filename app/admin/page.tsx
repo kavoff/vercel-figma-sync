@@ -49,13 +49,15 @@ export default function AdminPage() {
     a.click()
   }
 
-  const getStatusBadge = (status: TextStatus) => {
-    // grey (draft), yellow (in_review), green (approved)
-    const label = status === "draft" ? "Draft" : status === "in_review" ? "To review" : "Done"
+  const getStatusBadge = (statusEn?: TextStatus, statusRu?: TextStatus) => {
+    const rank = (s?: TextStatus) => (s === "in_review" ? 0 : s === "draft" ? 1 : s === "approved" ? 2 : 3)
+    const best = rank(statusEn) <= rank(statusRu) ? statusEn : statusRu
+    const s = (best || statusEn || statusRu || "draft") as TextStatus
+    const label = s === "draft" ? "Draft" : s === "in_review" ? "To review" : "Done"
     const className =
-      status === "draft"
+      s === "draft"
         ? "bg-muted text-foreground"
-        : status === "in_review"
+        : s === "in_review"
         ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
         : "bg-green-100 text-green-800 border border-green-300"
     return <Badge className={className}>{label}</Badge>
@@ -74,7 +76,7 @@ export default function AdminPage() {
   const markedRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncMarked?: Record<string, boolean> }
   if (!markedRef.__textsyncMarked) markedRef.__textsyncMarked = {}
 
-  const scheduleSave = (key: string, updates: Partial<Pick<TextKey, "value">>, delay = 800) => {
+  const scheduleSave = (key: string, updates: Record<string, unknown>, delay = 800) => {
     const timers = timersRef.__textsyncTimers!
     if (timers[key]) clearTimeout(timers[key])
     timers[key] = setTimeout(async () => {
@@ -300,16 +302,17 @@ export default function AdminPage() {
                         />
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(text.status)}
+                        {getStatusBadge(text.status_en as TextStatus, text.status_ru as TextStatus)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(text.updated_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Select
-                          value={text.status}
+                          value={(text.status_en || text.status_ru || "draft") as string}
                           onValueChange={async (v) => {
                             const newStatus = v as TextStatus
+                            // change both locales (create RU if needed later on value edit)
                             await updateText(text.key, { status: newStatus })
                             mutate()
                           }}
