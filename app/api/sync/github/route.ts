@@ -12,21 +12,11 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Load approved texts for language
-    const { data: approvedTexts, error: textsError } = await supabase
-      .from("texts")
-      .select("key, value")
-      .eq("status", "approved")
-      .eq("lang", lang)
+    // Optional subset keys in body
+    const body = await request.json().catch(() => ({}))
+    const keys: string[] | undefined = Array.isArray(body?.keys) ? body.keys : undefined
 
-    if (textsError) throw textsError
-
-    const jsonContent: Record<string, string> = {}
-    approvedTexts?.forEach((t) => {
-      jsonContent[t.key] = t.value
-    })
-
-    // Get active project
+    // Load active project
     const { data: activeProject, error: projectError } = await supabase
       .from("projects")
       .select("*")
@@ -34,22 +24,63 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (projectError) throw projectError
-
     if (!activeProject) {
       return NextResponse.json({ error: "No active project configured" }, { status: 400 })
     }
 
-    const githubConfig = {
-      token: activeProject.github_token,
-      owner: activeProject.github_owner,
-      repo: activeProject.github_repo,
-      branch: activeProject.github_branch,
-      path: activeProject.github_path,
+    // Load texts to sync
+    let jsonContent: Record<string, string> = {}
+    if (keys && keys.length > 0) {
+      // Partial: fetch only provided keys in active project
+      const { data: rows, error } = await supabase
+        .from("texts")
+        .select("key, value")
+        .eq("lang", lang)
+        .eq("project_id", activeProject.id)
+        .in("key", keys)
+      if (error) throw error
+      // Merge into existing file content
+      const cfg = {
+        token: activeProject.github_token,
+        owner: activeProject.github_owner,
+        repo: activeProject.github_repo,
+        branch: activeProject.github_branch,
+        path: activeProject.github_path,
+      }
+      // Get existing file to merge
+      const { getFileContent, createOrUpdateFile } = await import("@/lib/github")
+      const existing = await getFileContent(cfg)
+      try {
+        jsonContent = existing?.content ? JSON.parse(existing.content) : {}
+      } catch {
+        jsonContent = {}
+      }
+      for (const r of rows || []) jsonContent[r.key] = r.value
+      // Write merged content back
+      await createOrUpdateFile(cfg, JSON.stringify(jsonContent, null, 2), "Partial update from TextSync", existing?.sha)
+      return NextResponse.json({ success: true, count: keys.length, mode: "partial" })
+    } else {
+      // Full: all approved in active project
+      const { data: approvedTexts, error: textsError } = await supabase
+        .from("texts")
+        .select("key, value")
+        .eq("status", "approved")
+        .eq("lang", lang)
+        .eq("project_id", activeProject.id)
+      if (textsError) throw textsError
+      approvedTexts?.forEach((t) => {
+        jsonContent[t.key] = t.value
+      })
+      const githubConfig = {
+        token: activeProject.github_token,
+        owner: activeProject.github_owner,
+        repo: activeProject.github_repo,
+        branch: activeProject.github_branch,
+        path: activeProject.github_path,
+      }
+      await syncToGitHub(jsonContent, githubConfig)
+      return NextResponse.json({ success: true, count: Object.keys(jsonContent).length, mode: "full" })
     }
-
-    await syncToGitHub(jsonContent, githubConfig)
-
-    return NextResponse.json({ success: true, count: Object.keys(jsonContent).length })
   } catch (error) {
     console.error("[v0] Manual GitHub sync error:", error)
     if (error instanceof Error && error.message === "Unauthorized") {

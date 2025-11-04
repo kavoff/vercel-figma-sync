@@ -11,13 +11,21 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+
+    // Determine active project for scoping
+    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).single()
     const results = []
 
     for (const item of texts) {
       const { key, value, category, sources } = item
 
-      // Check if key exists
-      const { data: existing } = await supabase.from("texts").select("*").eq("key", key).single()
+      // Check if key exists within project scope
+      const { data: existing } = await supabase
+        .from("texts")
+        .select("*")
+        .eq("key", key)
+        .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
+        .single()
 
       if (!existing) {
         // Create new draft
@@ -30,6 +38,7 @@ export async function POST(request: NextRequest) {
             lang: "ru",
             status: "draft",
             sources: sources || {},
+            ...(activeProject ? { project_id: activeProject.id } : {}),
           })
           .select()
           .single()
@@ -47,6 +56,7 @@ export async function POST(request: NextRequest) {
             sources: sources || existing.sources,
           })
           .eq("key", key)
+          .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
           .select()
           .single()
 
@@ -64,6 +74,7 @@ export async function POST(request: NextRequest) {
             sources: sources || existing.sources,
           })
           .eq("key", key)
+          .eq(activeProject ? "project_id" : "key", activeProject ? activeProject.id : key)
           .select()
           .single()
 

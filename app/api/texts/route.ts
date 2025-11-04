@@ -10,10 +10,15 @@ export async function GET(request: NextRequest) {
     const lang = searchParams.get("lang") || "ru"
 
     const supabase = await createClient()
+
+    // Scope to active project
+    const { data: activeProject } = await supabase.from("projects").select("id").eq("is_active", true).single()
+
     let query = supabase
       .from("texts")
       .select("*")
       .eq("lang", lang)
+      .eq(activeProject ? "project_id" : "lang", activeProject ? activeProject.id : lang) // if no project table yet, keep working
       .order("updated_at", { ascending: false })
 
     if (status) {

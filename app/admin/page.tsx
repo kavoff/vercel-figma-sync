@@ -98,6 +98,39 @@ export default function AdminPage() {
     mutate()
   }
 
+  const toggleSelectAll = (checked: boolean) => {
+    const map: Record<string, boolean> = {}
+    for (const t of data?.texts || []) map[t.key] = checked
+    setSelected(map)
+  }
+
+  const bulkChangeStatus = async (status: TextStatus) => {
+    const keys = Object.entries(selected).filter(([, v]) => v).map(([k]) => k)
+    if (!keys.length) return
+    await Promise.all(keys.map((k) => updateText(k, { status })))
+    mutate()
+  }
+
+  const syncSelected = async () => {
+    const keys = Object.entries(selected).filter(([, v]) => v).map(([k]) => k)
+    if (!keys.length) return
+    setSyncLoading(true)
+    try {
+      const res = await fetch("/api/sync/github?lang=ru", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys }),
+      })
+      if (!res.ok) throw new Error("Sync failed")
+      const j = await res.json()
+      alert(`Synced ${j.count ?? 0} selected item(s) to GitHub`)
+    } catch {
+      alert("Failed to sync selected to GitHub")
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -158,6 +191,19 @@ export default function AdminPage() {
           <Button variant="destructive" onClick={deleteSelected} disabled={Object.values(selected).every((v) => !v)}>
             Delete selected
           </Button>
+          <Select onValueChange={(v) => bulkChangeStatus(v as TextStatus)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Change status (bulk)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="in_review">To review</SelectItem>
+              <SelectItem value="approved">Done</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={syncSelected} disabled={Object.values(selected).every((v) => !v) || syncLoading}>
+            {syncLoading ? "Syncing..." : "Sync selected"}
+          </Button>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
@@ -178,7 +224,13 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      checked={!!data?.texts.length && Object.values(selected).filter(Boolean).length === data?.texts.length}
+                    />
+                  </TableHead>
                   <TableHead>Key</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Status</TableHead>
