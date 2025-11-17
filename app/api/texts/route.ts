@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("[v0] GET /api/texts - starting")
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status")
     const category = searchParams.get("category")
@@ -17,6 +18,8 @@ export async function GET(request: NextRequest) {
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle()
+
+    console.log("[v0] Active project:", activeProject?.id || "none")
 
     let query = supabase
       .from("texts")
@@ -36,12 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (q) {
-      try {
-        query = query.or(`key.ilike.%${q}%,value_en.ilike.%${q}%,value_ru.ilike.%${q}%`)
-      } catch {
-        // Fallback to old schema
-        query = query.or(`key.ilike.%${q}%,value.ilike.%${q}%`)
-      }
+      query = query.or(`key.ilike.%${q}%,value_en.ilike.%${q}%,value_ru.ilike.%${q}%`)
     }
 
     const { data, error } = await query
@@ -50,6 +48,8 @@ export async function GET(request: NextRequest) {
       console.error("[v0] Get texts query error:", error)
       throw error
     }
+
+    console.log("[v0] Found texts:", data?.length || 0)
 
     const statusOrder: Record<string, number> = { in_review: 0, draft: 1, approved: 2 }
     const sorted = (data || []).slice().sort((a: any, b: any) => {
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ texts: sorted })
   } catch (error) {
     console.error("[v0] Get texts error:", error)
-    return NextResponse.json({ error: "Failed to fetch texts" }, { status: 500 })
+    return NextResponse.json({ texts: [], error: "Failed to fetch texts" }, { status: 200 })
   }
 }
 

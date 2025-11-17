@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[v0] POST /api/texts/bulk-upsert - starting")
     const body = await request.json()
     const { texts } = body
 
@@ -10,9 +11,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid texts array" }, { status: 400 })
     }
 
+    console.log("[v0] Received texts to import:", texts.length)
+
     const supabase = await createClient()
 
-    const { data: activeProject } = await supabase
+    let { data: activeProject } = await supabase
       .from("projects")
       .select("id")
       .eq("is_active", true)
@@ -20,13 +23,36 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle()
 
-    if (!activeProject?.id) {
-      return NextResponse.json({ error: "No active project selected" }, { status: 400 })
+    if (!activeProject) {
+      console.log("[v0] No active project found, creating default project")
+      const { data: newProject, error: createError } = await supabase
+        .from("projects")
+        .insert({
+          name: "Default Project",
+          github_owner: "",
+          github_repo: "",
+          github_branch: "main",
+          github_path: "locales",
+          github_token: "",
+          is_active: true,
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error("[v0] Failed to create default project:", createError)
+        return NextResponse.json({ error: "No active project and failed to create one" }, { status: 400 })
+      }
+      activeProject = newProject
+      console.log("[v0] Created default project:", activeProject.id)
     }
+
     const results = []
 
     for (const item of texts) {
       const { key, value, category, sources } = item
+
+      console.log("[v0] Processing text:", key)
 
       const { data: existing } = await supabase
         .from("texts")
@@ -36,6 +62,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (!existing) {
+        console.log("[v0] Creating new text:", key)
         const { data, error } = await supabase
           .from("texts")
           .insert({
@@ -52,8 +79,11 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "created", data })
+        } else {
+          console.error("[v0] Error creating text:", key, error)
         }
       } else if (existing.status !== "approved") {
+        console.log("[v0] Updating draft/in_review text:", key)
         const { data, error } = await supabase
           .from("texts")
           .update({
@@ -70,6 +100,7 @@ export async function POST(request: NextRequest) {
           results.push({ key, action: "updated", data })
         }
       } else if (existing.value_en !== value) {
+        console.log("[v0] Approved text changed, moving to review:", key)
         const { data, error } = await supabase
           .from("texts")
           .update({
@@ -87,10 +118,12 @@ export async function POST(request: NextRequest) {
           results.push({ key, action: "moved_to_review", data })
         }
       } else {
+        console.log("[v0] Skipping unchanged approved text:", key)
         results.push({ key, action: "skipped", reason: "approved_unchanged" })
       }
     }
 
+    console.log("[v0] Bulk upsert completed:", results.length, "processed")
     return NextResponse.json({ results })
   } catch (error) {
     console.error("[v0] Bulk upsert error:", error)

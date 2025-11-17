@@ -30,6 +30,7 @@ export default function AdminPage() {
   const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(`/api/texts?${queryParams.toString()}`, fetcher)
   const { data: projectsData } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
 
+  const texts = data?.texts || []
   const activeProject = projectsData?.projects.find((p) => p.is_active)
   const [syncLoading, setSyncLoading] = useState(false)
 
@@ -128,7 +129,7 @@ export default function AdminPage() {
 
   const toggleSelectAll = (checked: boolean) => {
     const map: Record<string, boolean> = {}
-    for (const t of data?.texts || []) map[t.key] = checked
+    for (const t of texts) map[t.key] = checked
     setSelected(map)
   }
 
@@ -256,7 +257,7 @@ export default function AdminPage() {
                     <input
                       type="checkbox"
                       onChange={(e) => toggleSelectAll(e.target.checked)}
-                      checked={!!data?.texts.length && Object.values(selected).filter(Boolean).length === data?.texts.length}
+                      checked={!!texts.length && Object.values(selected).filter(Boolean).length === texts.length}
                     />
                   </TableHead>
                   <TableHead className="w-[200px]">Key</TableHead>
@@ -266,14 +267,14 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.texts.length === 0 ? (
+                {texts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                       No texts found. Export from Figma to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data?.texts.map((text) => (
+                  texts.map((text) => (
                     <TableRow key={text.key}>
                       <TableCell>
                         <input type="checkbox" checked={!!selected[text.key]} onChange={(e) => toggleSelected(text.key, e.target.checked)} />
