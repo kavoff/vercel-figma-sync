@@ -5,13 +5,11 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get("status")
-    const category = searchParams.get("category") // Added category filter
+    const category = searchParams.get("category")
     const q = searchParams.get("q")
-    const lang = searchParams.get("lang") || "ru"
 
     const supabase = await createClient()
 
-    // Scope to active project
     const { data: activeProject } = await supabase
       .from("projects")
       .select("id")
@@ -23,7 +21,6 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("texts")
       .select("*")
-      .eq("lang", lang)
       .order("updated_at", { ascending: false })
 
     if (activeProject?.id) {
@@ -39,22 +36,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (q) {
-      query = query.or(`key.ilike.%${q}%,value.ilike.%${q}%`)
+      try {
+        query = query.or(`key.ilike.%${q}%,value_en.ilike.%${q}%,value_ru.ilike.%${q}%`)
+      } catch {
+        // Fallback to old schema
+        query = query.or(`key.ilike.%${q}%,value.ilike.%${q}%`)
+      }
     }
 
     const { data, error } = await query
 
     if (error) {
+      console.error("[v0] Get texts query error:", error)
       throw error
     }
 
-    // Client wants: Review (in_review) on top, then Draft, then Done (approved)
     const statusOrder: Record<string, number> = { in_review: 0, draft: 1, approved: 2 }
     const sorted = (data || []).slice().sort((a: any, b: any) => {
       const sa = statusOrder[a.status] ?? 3
       const sb = statusOrder[b.status] ?? 3
       if (sa !== sb) return sa - sb
-      // within same status, sort by updated_at desc
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     })
 

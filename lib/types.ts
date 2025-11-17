@@ -2,10 +2,11 @@ export type TextStatus = "draft" | "in_review" | "approved"
 
 export type TextKey = {
   key: string
-  value: string
-  lang: string
+  value_en: string // Source English text
+  value_ru: string | null // Russian translation (null if not translated)
   status: TextStatus
-  category: string // Added category field for grouping texts
+  category: string
+  project_id: string | null
   sources: {
     figmaFileId?: string
     figmaNodes?: string[]
@@ -39,5 +40,4 @@ export type Project = {
 
 export type ProjectInput = Omit<Project, "id" | "created_at" | "updated_at">
 
-// Client-safe project type without sensitive token
 export type ProjectSafe = Omit<Project, "github_token">

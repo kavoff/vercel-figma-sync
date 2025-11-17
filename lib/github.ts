@@ -151,21 +151,42 @@ export async function createPullRequest(
   }
 }
 
-export async function syncToGitHub(jsonContent: Record<string, string>, config: GitHubConfig | null): Promise<void> {
+export async function syncToGitHub(
+  jsonContentEn: Record<string, string>,
+  jsonContentRu: Record<string, string>,
+  config: GitHubConfig | null
+): Promise<void> {
   if (!config) {
     console.log("[v0] GitHub integration not configured, skipping sync")
     return
   }
 
   try {
-    const content = JSON.stringify(jsonContent, null, 2)
-    const existingFile = await getFileContent(config)
+    // Sync English file
+    const contentEn = JSON.stringify(jsonContentEn, null, 2)
+    const pathEn = config.path.replace(/\.json$/, '.en.json') || 'locales/en.json'
+    const existingFileEn = await getFileContent({ ...config, path: pathEn })
+    await createOrUpdateFile(
+      { ...config, path: pathEn },
+      contentEn,
+      "Update English texts from TextSync admin",
+      existingFileEn?.sha
+    )
 
-    await createOrUpdateFile(config, content, "Update texts from TextSync admin", existingFile?.sha)
+    // Sync Russian file
+    const contentRu = JSON.stringify(jsonContentRu, null, 2)
+    const pathRu = config.path.replace(/\.json$/, '.ru.json') || 'locales/ru.json'
+    const existingFileRu = await getFileContent({ ...config, path: pathRu })
+    await createOrUpdateFile(
+      { ...config, path: pathRu },
+      contentRu,
+      "Update Russian texts from TextSync admin",
+      existingFileRu?.sha
+    )
 
-    console.log("[v0] Successfully synced to GitHub")
+    console.log("[v0] Successfully synced to GitHub (EN + RU)")
   } catch (error) {
     console.error("[v0] Failed to sync to GitHub:", error)
-    // Don't throw - GitHub sync is optional
+    throw error
   }
 }

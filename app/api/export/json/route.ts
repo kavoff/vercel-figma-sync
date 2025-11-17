@@ -8,16 +8,21 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const { data, error } = await supabase.from("texts").select("key, value").eq("lang", lang).eq("status", "approved")
+    const { data, error } = await supabase
+      .from("texts")
+      .select("key, value_en, value_ru")
+      .eq("status", "approved")
 
     if (error) {
       throw error
     }
 
-    // Convert to key-value object
     const jsonOutput: Record<string, string> = {}
     data?.forEach((item) => {
-      jsonOutput[item.key] = item.value
+      const value = lang === "en" ? item.value_en : item.value_ru
+      if (value) {
+        jsonOutput[item.key] = value
+      }
     })
 
     return NextResponse.json(jsonOutput, {

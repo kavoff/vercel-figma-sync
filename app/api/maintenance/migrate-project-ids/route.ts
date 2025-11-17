@@ -25,5 +25,3 @@ export async function POST() {
     return NextResponse.json({ error: "Failed to migrate project ids" }, { status: 500 })
   }
 }
-
-

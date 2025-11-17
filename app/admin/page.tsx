@@ -5,12 +5,11 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import useSWR from "swr"
 import type { TextKey, TextStatus, ProjectSafe as Project } from "@/lib/types"
-import { EditTextDialog } from "@/components/edit-text-dialog"
-import { useRouter } from "next/navigation"
-import { Download, LogOut, Search, Settings, FolderOpen } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import { Download, LogOut, Search, Settings } from 'lucide-react'
 import Link from "next/link"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -19,8 +18,10 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = useState("")
-  const [editingText, setEditingText] = useState<TextKey | null>(null)
   const router = useRouter()
+
+  const saveTimersRef = useRef<Record<string, NodeJS.Timeout>>({})
+  const pendingChangesRef = useRef<Record<string, Partial<Pick<TextKey, "value_en" | "value_ru">>>>({})
 
   const queryParams = new URLSearchParams()
   if (statusFilter !== "all") queryParams.set("status", statusFilter)
@@ -28,7 +29,6 @@ export default function AdminPage() {
 
   const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(`/api/texts?${queryParams.toString()}`, fetcher)
   const { data: projectsData } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
-  // categories are not used anymore
 
   const activeProject = projectsData?.projects.find((p) => p.is_active)
   const [syncLoading, setSyncLoading] = useState(false)
@@ -49,19 +49,23 @@ export default function AdminPage() {
     a.click()
   }
 
-  const getStatusBadge = (status: TextStatus) => {
-    // grey (draft), yellow (in_review), green (approved)
-    const label = status === "draft" ? "Draft" : status === "in_review" ? "To review" : "Done"
+  const getStatusBadge = (text: TextKey) => {
+    if (!text.value_ru) {
+      return <Badge className="bg-orange-100 text-orange-800 border border-orange-300">No localization</Badge>
+    }
+    
+    const status = text.status
+    const label = status === "draft" ? "Draft" : status === "in_review" ? "In Review" : "Done"
     const className =
       status === "draft"
-        ? "bg-muted text-foreground"
+        ? "bg-gray-100 text-gray-800 border border-gray-300"
         : status === "in_review"
         ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
         : "bg-green-100 text-green-800 border border-green-300"
     return <Badge className={className}>{label}</Badge>
   }
 
-  const updateText = async (key: string, updates: Partial<Pick<TextKey, "key" | "value" | "status">>) => {
+  const updateText = async (key: string, updates: Partial<Pick<TextKey, "key" | "value_en" | "value_ru" | "status">>) => {
     await fetch(`/api/texts/${encodeURIComponent(key)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -69,18 +73,42 @@ export default function AdminPage() {
     })
   }
 
-  const timersRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncTimers?: Record<string, any> }
-  if (!timersRef.__textsyncTimers) timersRef.__textsyncTimers = {}
-  const markedRef = (typeof window !== 'undefined' ? (window as any) : {}) as { __textsyncMarked?: Record<string, boolean> }
-  if (!markedRef.__textsyncMarked) markedRef.__textsyncMarked = {}
+  const scheduleAutoSave = (key: string, field: "value_en" | "value_ru", value: string) => {
+    // Store the pending change
+    if (!pendingChangesRef.current[key]) {
+      pendingChangesRef.current[key] = {}
+    }
+    pendingChangesRef.current[key][field] = value
 
-  const scheduleSave = (key: string, updates: Partial<Pick<TextKey, "value">>, delay = 800) => {
-    const timers = timersRef.__textsyncTimers!
-    if (timers[key]) clearTimeout(timers[key])
-    timers[key] = setTimeout(async () => {
-      await updateText(key, updates)
-      // no immediate mutate to avoid UI jank
-    }, delay)
+    // Clear existing timer
+    if (saveTimersRef.current[key]) {
+      clearTimeout(saveTimersRef.current[key])
+    }
+
+    // Set new timer (30 seconds)
+    saveTimersRef.current[key] = setTimeout(async () => {
+      const changes = pendingChangesRef.current[key]
+      if (changes) {
+        await updateText(key, changes)
+        delete pendingChangesRef.current[key]
+      }
+    }, 30000)
+  }
+
+  const saveOnBlur = async (key: string) => {
+    // Clear the auto-save timer
+    if (saveTimersRef.current[key]) {
+      clearTimeout(saveTimersRef.current[key])
+      delete saveTimersRef.current[key]
+    }
+
+    // Save pending changes immediately
+    const changes = pendingChangesRef.current[key]
+    if (changes) {
+      await updateText(key, changes)
+      delete pendingChangesRef.current[key]
+      mutate()
+    }
   }
 
   const toggleSelected = (k: string, checked: boolean) => {
@@ -116,7 +144,7 @@ export default function AdminPage() {
     if (!keys.length) return
     setSyncLoading(true)
     try {
-      const res = await fetch("/api/sync/github?lang=ru", {
+      const res = await fetch("/api/sync/github", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keys }),
@@ -147,7 +175,7 @@ export default function AdminPage() {
             <Button onClick={async () => {
               try {
                 setSyncLoading(true)
-                const res = await fetch("/api/sync/github?lang=ru", { method: "POST" })
+                const res = await fetch("/api/sync/github", { method: "POST" })
                 if (!res.ok) throw new Error("Sync failed")
                 const data = await res.json()
                 alert(`Synced ${data.count ?? 0} items to GitHub`)
@@ -193,11 +221,11 @@ export default function AdminPage() {
           </Button>
           <Select onValueChange={(v) => bulkChangeStatus(v as TextStatus)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Change status (bulk)" />
+              <SelectValue placeholder="Change status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="in_review">To review</SelectItem>
+              <SelectItem value="in_review">In Review</SelectItem>
               <SelectItem value="approved">Done</SelectItem>
             </SelectContent>
           </Select>
@@ -212,7 +240,7 @@ export default function AdminPage() {
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="in_review">In Review</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="approved">Done</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -231,17 +259,16 @@ export default function AdminPage() {
                       checked={!!data?.texts.length && Object.values(selected).filter(Boolean).length === data?.texts.length}
                     />
                   </TableHead>
-                  <TableHead>Key</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[200px]">Key</TableHead>
+                  <TableHead className="w-[300px]">Value (EN)</TableHead>
+                  <TableHead className="w-[300px]">Value (RU)</TableHead>
+                  <TableHead className="w-[120px] text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data?.texts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                       No texts found. Export from Figma to get started.
                     </TableCell>
                   </TableRow>
@@ -257,54 +284,52 @@ export default function AdminPage() {
                           onBlur={async (e) => {
                             const newKey = e.target.value
                             if (newKey && newKey !== text.key) {
-                              await updateText(text.key, { key: newKey, status: "in_review" })
+                              await updateText(text.key, { key: newKey })
                               mutate()
                             }
                           }}
                         />
                       </TableCell>
-                      <TableCell className="max-w-md">
+                      <TableCell>
                         <Input
-                          defaultValue={text.value}
-                          onChange={async (e) => {
-                            const newVal = e.target.value
-                            // mark status once per row
-                            if (!markedRef.__textsyncMarked![text.key]) {
-                              markedRef.__textsyncMarked![text.key] = true
-                              await updateText(text.key, { status: "in_review" })
-                            }
-                            scheduleSave(text.key, { value: newVal })
+                          defaultValue={text.value_en}
+                          onChange={(e) => {
+                            scheduleAutoSave(text.key, "value_en", e.target.value)
                           }}
-                          onBlur={async (e) => {
-                            const newVal = e.target.value
-                            await updateText(text.key, { value: newVal })
-                          }}
+                          onBlur={() => saveOnBlur(text.key)}
                         />
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(text.status)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(text.updated_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Select
-                          value={text.status}
-                          onValueChange={async (v) => {
-                            const newStatus = v as TextStatus
-                            await updateText(text.key, { status: newStatus })
-                            mutate()
+                        <Input
+                          placeholder="Add Russian translation..."
+                          defaultValue={text.value_ru || ""}
+                          onChange={(e) => {
+                            scheduleAutoSave(text.key, "value_ru", e.target.value)
                           }}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Change status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="in_review">To review</SelectItem>
-                            <SelectItem value="approved">Done</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          onBlur={() => saveOnBlur(text.key)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col gap-2 items-center">
+                          <Select
+                            value={text.status}
+                            onValueChange={async (v) => {
+                              const newStatus = v as TextStatus
+                              await updateText(text.key, { status: newStatus })
+                              mutate()
+                            }}
+                          >
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="in_review">In Review</SelectItem>
+                              <SelectItem value="approved">Done</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {getStatusBadge(text)}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -314,7 +339,6 @@ export default function AdminPage() {
           </div>
         )}
       </main>
-
     </div>
   )
 }

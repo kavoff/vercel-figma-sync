@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Determine active project for scoping
     const { data: activeProject } = await supabase
       .from("projects")
       .select("id")
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
     for (const item of texts) {
       const { key, value, category, sources } = item
 
-      // Check if key exists within project scope
       const { data: existing } = await supabase
         .from("texts")
         .select("*")
@@ -38,14 +36,13 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (!existing) {
-        // Create new draft
         const { data, error } = await supabase
           .from("texts")
           .insert({
             key,
-            value,
+            value_en: value,
+            value_ru: null,
             category: category || "uncategorized",
-            lang: "ru",
             status: "draft",
             sources: sources || {},
             project_id: activeProject.id,
@@ -57,11 +54,10 @@ export async function POST(request: NextRequest) {
           results.push({ key, action: "created", data })
         }
       } else if (existing.status !== "approved") {
-        // Update if not approved
         const { data, error } = await supabase
           .from("texts")
           .update({
-            value,
+            value_en: value,
             category: category || existing.category,
             sources: sources || existing.sources,
           })
@@ -73,12 +69,11 @@ export async function POST(request: NextRequest) {
         if (!error) {
           results.push({ key, action: "updated", data })
         }
-      } else if (existing.value !== value) {
-        // If approved but value changed, move to in_review
+      } else if (existing.value_en !== value) {
         const { data, error } = await supabase
           .from("texts")
           .update({
-            value,
+            value_en: value,
             category: category || existing.category,
             status: "in_review",
             sources: sources || existing.sources,
