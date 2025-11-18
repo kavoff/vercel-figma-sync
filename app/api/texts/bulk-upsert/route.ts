@@ -4,17 +4,38 @@ import { createClient } from "@/lib/supabase/server"
 export async function POST(request: NextRequest) {
   try {
     console.log("[v0] POST /api/texts/bulk-upsert - starting")
+    
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("[v0] Missing Supabase environment variables")
+      return NextResponse.json({ 
+        error: "Supabase not configured. Please add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to your Vercel project environment variables.",
+        results: []
+      }, { status: 500 })
+    }
+    
     const body = await request.json()
-    console.log("[v0] Request body:", JSON.stringify(body))
+    console.log("[v0] Request body keys:", Object.keys(body))
     
     const { texts } = body
 
     if (!texts || !Array.isArray(texts)) {
-      console.error("[v0] Invalid texts array received:", texts)
-      return NextResponse.json({ error: "Invalid texts array", received: typeof texts }, { status: 400 })
+      console.error("[v0] Invalid texts:", typeof texts, Array.isArray(texts))
+      return NextResponse.json({ 
+        error: "Invalid request: 'texts' must be an array", 
+        received: typeof texts,
+        results: []
+      }, { status: 400 })
     }
 
-    console.log("[v0] Received texts to import:", texts.length)
+    if (texts.length === 0) {
+      return NextResponse.json({ 
+        results: [], 
+        success: true,
+        message: "No texts to process"
+      })
+    }
+
+    console.log("[v0] Processing", texts.length, "texts")
 
     const supabase = await createClient()
 
@@ -27,7 +48,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (!activeProject) {
-      console.log("[v0] No active project found, creating default project")
+      console.log("[v0] Creating default project...")
       const { data: newProject, error: createError } = await supabase
         .from("projects")
         .insert({
@@ -43,14 +64,17 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (createError) {
-        console.error("[v0] Failed to create default project:", createError)
-        return NextResponse.json({ error: "No active project and failed to create one", details: createError.message }, { status: 500 })
+        console.error("[v0] Failed to create project:", createError)
+        return NextResponse.json({ 
+          error: "Failed to create default project", 
+          details: createError.message,
+          results: []
+        }, { status: 500 })
       }
+      
       activeProject = newProject
-      console.log("[v0] Created default project:", activeProject.id)
+      console.log("[v0] Created project:", activeProject.id)
     }
-
-    console.log("[v0] Active project ID:", activeProject.id)
 
     const results = []
 
@@ -58,12 +82,10 @@ export async function POST(request: NextRequest) {
       const { key, value, category, sources } = item
 
       if (!key || !value) {
-        console.error("[v0] Invalid text item:", item)
+        console.warn("[v0] Skipping invalid item:", { key, hasValue: !!value })
         results.push({ key: key || "unknown", action: "error", error: "Missing key or value" })
         continue
       }
-
-      console.log("[v0] Processing text:", key, "value length:", value.length)
 
       const { data: existing } = await supabase
         .from("texts")
@@ -73,7 +95,6 @@ export async function POST(request: NextRequest) {
         .maybeSingle()
 
       if (!existing) {
-        console.log("[v0] Creating new text:", key)
         const { data, error } = await supabase
           .from("texts")
           .insert({
@@ -90,13 +111,12 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "created", data })
-          console.log("[v0] Successfully created text:", key)
+          console.log("[v0] Created:", key)
         } else {
-          console.error("[v0] Error creating text:", key, error)
+          console.error("[v0] Create error:", key, error.message)
           results.push({ key, action: "error", error: error.message })
         }
       } else if (existing.status !== "done") {
-        console.log("[v0] Updating draft/in_review text:", key)
         const { data, error } = await supabase
           .from("texts")
           .update({
@@ -111,13 +131,12 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "updated", data })
-          console.log("[v0] Successfully updated text:", key)
+          console.log("[v0] Updated:", key)
         } else {
-          console.error("[v0] Error updating text:", key, error)
+          console.error("[v0] Update error:", key, error.message)
           results.push({ key, action: "error", error: error.message })
         }
       } else if (existing.value_en !== value) {
-        console.log("[v0] Done text changed, moving to in_review:", key)
         const { data, error } = await supabase
           .from("texts")
           .update({
@@ -133,24 +152,24 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "moved_to_review", data })
-          console.log("[v0] Successfully moved to review:", key)
+          console.log("[v0] Moved to review:", key)
         } else {
-          console.error("[v0] Error moving to review:", key, error)
+          console.error("[v0] Review error:", key, error.message)
           results.push({ key, action: "error", error: error.message })
         }
       } else {
-        console.log("[v0] Skipping unchanged done text:", key)
         results.push({ key, action: "skipped", reason: "done_unchanged" })
       }
     }
 
-    console.log("[v0] Bulk upsert completed:", results.length, "processed")
+    console.log("[v0] Completed:", results.length, "processed")
     return NextResponse.json({ results, success: true })
   } catch (error) {
     console.error("[v0] Bulk upsert error:", error)
     return NextResponse.json({ 
       error: "Failed to process bulk upsert", 
-      details: error instanceof Error ? error.message : "Unknown error" 
+      details: error instanceof Error ? error.message : String(error),
+      results: []
     }, { status: 500 })
   }
 }
