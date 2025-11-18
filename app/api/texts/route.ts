@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const { data: activeProject } = await supabase
+    const { data: activeProject, error: projectError } = await supabase
       .from("projects")
       .select("id")
       .eq("is_active", true)
@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     console.log("[v0] Active project:", activeProject?.id || "none")
+
+    if (projectError) {
+      console.error("[v0] Project query error:", projectError)
+    }
 
     let query = supabase
       .from("texts")
@@ -32,7 +36,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      query = query.eq("status", status)
+      if (status === 'approved') {
+        query = query.eq("status", "done")
+      } else {
+        query = query.eq("status", status)
+      }
     }
 
     if (category && category !== "all") {
@@ -47,13 +55,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("[v0] Get texts query error:", error)
-      // Return empty array instead of throwing
-      return NextResponse.json({ texts: [] })
+      return NextResponse.json({ texts: [], error: error.message }, { status: 500 })
     }
 
     console.log("[v0] Found texts:", data?.length || 0)
 
-    const statusOrder: Record<string, number> = { in_review: 0, draft: 1, approved: 2 }
+    const statusOrder: Record<string, number> = { in_review: 0, draft: 1, done: 2 }
     const sorted = (data || []).slice().sort((a: any, b: any) => {
       const sa = statusOrder[a.status] ?? 3
       const sb = statusOrder[b.status] ?? 3
@@ -64,8 +71,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ texts: sorted })
   } catch (error) {
     console.error("[v0] Get texts error:", error)
-    // Always return valid structure even on error
-    return NextResponse.json({ texts: [] })
+    return NextResponse.json({ 
+      texts: [], 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 })
   }
 }
 
