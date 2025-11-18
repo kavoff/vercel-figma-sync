@@ -162,9 +162,15 @@ export async function syncToGitHub(
   }
 
   try {
-    // Sync English file
+    // User provides parent directory, we add en/ru subdirectories
+    // Example: config.path = "locales/text.json" -> parentDir = "locales", filename = "text.json"
+    const pathParts = config.path.split('/')
+    const filename = pathParts.pop() || 'text.json'
+    const parentDir = pathParts.join('/') || 'locales'
+    
+    // Sync English file to {parentDir}/en/{filename}
     const contentEn = JSON.stringify(jsonContentEn, null, 2)
-    const pathEn = config.path.replace(/\.json$/, '.en.json') || 'locales/en.json'
+    const pathEn = `${parentDir}/en/${filename}`
     const existingFileEn = await getFileContent({ ...config, path: pathEn })
     await createOrUpdateFile(
       { ...config, path: pathEn },
@@ -173,9 +179,9 @@ export async function syncToGitHub(
       existingFileEn?.sha
     )
 
-    // Sync Russian file
+    // Sync Russian file to {parentDir}/ru/{filename}
     const contentRu = JSON.stringify(jsonContentRu, null, 2)
-    const pathRu = config.path.replace(/\.json$/, '.ru.json') || 'locales/ru.json'
+    const pathRu = `${parentDir}/ru/${filename}`
     const existingFileRu = await getFileContent({ ...config, path: pathRu })
     await createOrUpdateFile(
       { ...config, path: pathRu },

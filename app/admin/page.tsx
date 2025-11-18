@@ -27,7 +27,14 @@ export default function AdminPage() {
   if (statusFilter !== "all") queryParams.set("status", statusFilter)
   if (searchQuery) queryParams.set("q", searchQuery)
 
-  const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(`/api/texts?${queryParams.toString()}`, fetcher)
+  const { data, mutate, isLoading } = useSWR<{ texts: TextKey[] }>(
+    `/api/texts?${queryParams.toString()}`, 
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  )
   const { data: projectsData } = useSWR<{ projects: Project[] }>("/api/projects", fetcher)
 
   const texts = data?.texts || []
@@ -67,6 +74,21 @@ export default function AdminPage() {
   }
 
   const updateText = async (key: string, updates: Partial<Pick<TextKey, "key" | "value_en" | "value_ru" | "status">>) => {
+    // Optimistically update local state
+    mutate(
+      (current) => {
+        if (!current) return current
+        return {
+          ...current,
+          texts: current.texts.map((t) =>
+            t.key === key ? { ...t, ...updates } : t
+          ),
+        }
+      },
+      false // Don't revalidate immediately
+    )
+
+    // Make API call
     await fetch(`/api/texts/${encodeURIComponent(key)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -108,7 +130,6 @@ export default function AdminPage() {
     if (changes) {
       await updateText(key, changes)
       delete pendingChangesRef.current[key]
-      mutate()
     }
   }
 
@@ -137,7 +158,6 @@ export default function AdminPage() {
     const keys = Object.entries(selected).filter(([, v]) => v).map(([k]) => k)
     if (!keys.length) return
     await Promise.all(keys.map((k) => updateText(k, { status })))
-    mutate()
   }
 
   const syncSelected = async () => {
@@ -286,7 +306,6 @@ export default function AdminPage() {
                             const newKey = e.target.value
                             if (newKey && newKey !== text.key) {
                               await updateText(text.key, { key: newKey })
-                              mutate()
                             }
                           }}
                         />
@@ -317,7 +336,6 @@ export default function AdminPage() {
                             onValueChange={async (v) => {
                               const newStatus = v as TextStatus
                               await updateText(text.key, { status: newStatus })
-                              mutate()
                             }}
                           >
                             <SelectTrigger className="w-[120px]">
