@@ -52,14 +52,14 @@ export async function POST(request: NextRequest) {
     for (const item of texts) {
       const { key, value, category, sources } = item
 
-      console.log("[v0] Processing text:", key)
+      console.log("[v0] Processing text:", key, "value:", value)
 
       const { data: existing } = await supabase
         .from("texts")
         .select("*")
         .eq("key", key)
         .eq("project_id", activeProject.id)
-        .single()
+        .maybeSingle()
 
       if (!existing) {
         console.log("[v0] Creating new text:", key)
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           .from("texts")
           .insert({
             key,
-            value_en: value,
+            value_en: value, // Store as English source
             value_ru: null,
             category: category || "uncategorized",
             status: "draft",
@@ -79,8 +79,10 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "created", data })
+          console.log("[v0] Successfully created text:", key)
         } else {
           console.error("[v0] Error creating text:", key, error)
+          results.push({ key, action: "error", error: error.message })
         }
       } else if (existing.status !== "approved") {
         console.log("[v0] Updating draft/in_review text:", key)
@@ -98,6 +100,9 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "updated", data })
+        } else {
+          console.error("[v0] Error updating text:", key, error)
+          results.push({ key, action: "error", error: error.message })
         }
       } else if (existing.value_en !== value) {
         console.log("[v0] Approved text changed, moving to review:", key)
@@ -116,6 +121,9 @@ export async function POST(request: NextRequest) {
 
         if (!error) {
           results.push({ key, action: "moved_to_review", data })
+        } else {
+          console.error("[v0] Error moving to review:", key, error)
+          results.push({ key, action: "error", error: error.message })
         }
       } else {
         console.log("[v0] Skipping unchanged approved text:", key)
@@ -124,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("[v0] Bulk upsert completed:", results.length, "processed")
-    return NextResponse.json({ results })
+    return NextResponse.json({ results, success: true })
   } catch (error) {
     console.error("[v0] Bulk upsert error:", error)
     return NextResponse.json({ error: "Failed to process bulk upsert" }, { status: 500 })

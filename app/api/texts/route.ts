@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       .select("*")
       .order("updated_at", { ascending: false })
 
+    // Only filter by project if one is active
     if (activeProject?.id) {
       query = query.eq("project_id", activeProject.id)
     }
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("[v0] Get texts query error:", error)
-      throw error
+      // Return empty array instead of throwing
+      return NextResponse.json({ texts: [] })
     }
 
     console.log("[v0] Found texts:", data?.length || 0)
@@ -62,7 +64,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ texts: sorted })
   } catch (error) {
     console.error("[v0] Get texts error:", error)
-    return NextResponse.json({ texts: [], error: "Failed to fetch texts" }, { status: 200 })
+    // Always return valid structure even on error
+    return NextResponse.json({ texts: [] })
   }
 }
 

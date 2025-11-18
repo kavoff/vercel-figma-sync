@@ -134,34 +134,46 @@ async function exportTexts(apiUrl) {
                 textsMap.set(key, { key, value: text, nodes: [node] });
             }
         }
-        // Prepare data for API
+        // Prepare data for API - send value as English source text
         const texts = Array.from(textsMap.values()).map(({ key, value }) => ({
             key,
-            value,
-            lang: "ru",
-            sources: [{ type: "figma", file: figma.currentPage.name }],
+            value, // This will be treated as value_en by the API
+            category: figma.currentPage.name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+            sources: { type: "figma", file: figma.currentPage.name }
         }));
+
+        console.log(`[TextSync] Sending ${texts.length} texts to API`);
+
         // Send to API
         const response = await fetch(`${apiUrl}/api/texts/bulk-upsert`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ texts }),
         });
+        
         if (!response.ok) {
+            const errorData = await response.text();
+            console.error(`[TextSync] API error: ${response.status}`, errorData);
             throw new Error(`API error: ${response.status}`);
         }
+
+        const result = await response.json();
+        console.log(`[TextSync] Export result:`, result);
+
         figma.ui.postMessage({
             type: "export-complete",
             data: { message: `Exported ${texts.length} texts successfully` },
         });
     }
     catch (error) {
+        console.error(`[TextSync] Export error:`, error);
         figma.ui.postMessage({
             type: "export-error",
             data: { message: error instanceof Error ? error.message : "Unknown error" },
         });
     }
 }
+
 // Pull approved texts from admin panel
 async function pullTexts(apiUrl) {
     try {
@@ -171,10 +183,20 @@ async function pullTexts(apiUrl) {
             throw new Error(`API error: ${response.status}`);
         }
         const data = await response.json();
+        
+        console.log(`[TextSync] Received data from API:`, data);
+        
         const approvedTexts = new Map();
-        for (const text of data.texts) {
-            approvedTexts.set(text.key, text.value);
+        for (const text of data.texts || []) {
+            // Use Russian translation if available, otherwise use English
+            const valueToUse = text.value_ru || text.value_en;
+            if (valueToUse) {
+                approvedTexts.set(text.key, valueToUse);
+            }
         }
+
+        console.log(`[TextSync] Approved texts map size: ${approvedTexts.size}`);
+
         if (approvedTexts.size === 0) {
             figma.ui.postMessage({
                 type: "pull-complete",
@@ -198,24 +220,30 @@ async function pullTexts(apiUrl) {
                     await figma.loadFontAsync(node.fontName);
                     node.characters = newValue;
                     updatedCount++;
+                    console.log(`[TextSync] Updated text node: ${key}`);
                 }
                 catch (fontError) {
-                    console.log(`[v0] Failed to load font for node ${node.name}:`, fontError);
+                    console.log(`[TextSync] Failed to load font for node ${node.name}:`, fontError);
                 }
             }
         }
+
+        console.log(`[TextSync] Pull completed, updated ${updatedCount} nodes`);
+
         figma.ui.postMessage({
             type: "pull-complete",
             data: { message: `Updated ${updatedCount} text layers` },
         });
     }
     catch (error) {
+        console.error(`[TextSync] Pull error:`, error);
         figma.ui.postMessage({
             type: "pull-error",
             data: { message: error instanceof Error ? error.message : "Unknown error" },
         });
     }
 }
+
 // Show UI
 figma.showUI(__html__, { width: 400, height: 220 });
 // Отправляем сохраненный URL в UI при запуске
