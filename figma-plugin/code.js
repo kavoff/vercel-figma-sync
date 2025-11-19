@@ -98,9 +98,8 @@ function makeContextualKey(text, node) {
     return `${scope}_${base}`;
 }
 // Export texts to admin panel
-async function exportTexts(apiUrl) {
+async function exportTexts(apiUrl, projectId) {
     try {
-        // Collect scoped and visible text nodes
         const allTextNodes = getScopedTextNodes();
         const scopeInfo = figma.currentPage.name + (figma.currentPage.selection.length ? ` (selection x${figma.currentPage.selection.length})` : " (page)");
         console.log(`[TextSync] Scope: ${scopeInfo}, found text nodes: ${allTextNodes.length}`);
@@ -111,13 +110,11 @@ async function exportTexts(apiUrl) {
             });
             return;
         }
-        // Process texts and generate keys
         const textsMap = new Map();
         for (const node of allTextNodes) {
             const text = node.characters.trim();
             if (!text)
                 continue;
-            // Check if node already has a key
             let key;
             if (node.name.startsWith("T:")) {
                 key = node.name.substring(2);
@@ -126,7 +123,6 @@ async function exportTexts(apiUrl) {
                 key = makeContextualKey(text, node);
                 node.name = `T:${key}`;
             }
-            // Group by key for deduplication
             if (textsMap.has(key)) {
                 textsMap.get(key).nodes.push(node);
             }
@@ -134,17 +130,16 @@ async function exportTexts(apiUrl) {
                 textsMap.set(key, { key, value: text, nodes: [node] });
             }
         }
-        // Prepare data for API - send value as English source text
         const texts = Array.from(textsMap.values()).map(({ key, value }) => ({
             key,
-            value, // This will be treated as value_en by the API
+            value,
+            project_id: projectId,
             category: figma.currentPage.name.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
             sources: { type: "figma", file: figma.currentPage.name }
         }));
 
-        console.log(`[TextSync] Sending ${texts.length} texts to API`);
+        console.log(`[TextSync] Sending ${texts.length} texts to API for project ${projectId}`);
 
-        // Send to API
         const response = await fetch(`${apiUrl}/api/texts/bulk-upsert`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -175,10 +170,9 @@ async function exportTexts(apiUrl) {
 }
 
 // Pull approved texts from admin panel
-async function pullTexts(apiUrl) {
+async function pullTexts(apiUrl, projectId) {
     try {
-        // Fetch approved texts
-        const response = await fetch(`${apiUrl}/api/texts?status=approved`);
+        const response = await fetch(`${apiUrl}/api/texts?project_id=${projectId}&status=approved`);
         if (!response.ok) {
             throw new Error(`API error: ${response.status}`);
         }
@@ -188,7 +182,6 @@ async function pullTexts(apiUrl) {
         
         const approvedTexts = new Map();
         for (const text of data.texts || []) {
-            // Use Russian translation if available, otherwise use English
             const valueToUse = text.value_ru || text.value_en;
             if (valueToUse) {
                 approvedTexts.set(text.key, valueToUse);
@@ -204,7 +197,6 @@ async function pullTexts(apiUrl) {
             });
             return;
         }
-        // Collect scoped visible text nodes with keys
         const allTextNodes = getScopedTextNodes();
         const scopeInfo = figma.currentPage.name + (figma.currentPage.selection.length ? ` (selection x${figma.currentPage.selection.length})` : " (page)");
         console.log(`[TextSync] Pull scope: ${scopeInfo}, text nodes considered: ${allTextNodes.length}`);
@@ -216,7 +208,6 @@ async function pullTexts(apiUrl) {
             const newValue = approvedTexts.get(key);
             if (newValue && newValue !== node.characters) {
                 try {
-                    // Load font before updating
                     await figma.loadFontAsync(node.fontName);
                     node.characters = newValue;
                     updatedCount++;
@@ -244,34 +235,68 @@ async function pullTexts(apiUrl) {
     }
 }
 
-// Show UI
-figma.showUI(__html__, { width: 400, height: 220 });
-// Отправляем сохраненный URL в UI при запуске
-figma.clientStorage.getAsync('textsync:apiUrl').then(apiUrl => {
-    // 2. Если URL найден, отправляем его в UI для отображения
-    if (apiUrl) {
-        figma.ui.postMessage({ type: 'load-api-url', apiUrl: apiUrl });
+function navigateToLayer(key) {
+    const targetName = `T:${key}`;
+    
+    // Search all pages for the text node
+    for (const page of figma.root.children) {
+        const found = page.findOne(n => n.name === targetName && n.type === 'TEXT');
+        
+        if (found) {
+            // Switch to the page if needed
+            if (figma.currentPage !== page) {
+                figma.currentPage = page;
+            }
+            
+            // Select and zoom to the node
+            figma.currentPage.selection = [found];
+            figma.viewport.scrollAndZoomIntoView([found]);
+            
+            console.log(`[TextSync] Navigated to layer: ${key}`);
+            return;
+        }
     }
-}).catch(err => {
-    console.error('Error getting data from clientStorage:', err);
-});
+    
+    console.log(`[TextSync] Layer not found: ${key}`);
+}
+
+// Show UI
+figma.showUI(__html__, { width: 700, height: 600 });
+
+console.log('[TextSync Plugin] Plugin started, UI shown');
+
 // Handle messages from UI
 figma.ui.onmessage = async (msg) => {
-    // Если пришло сообщение 'export'
-    if (msg.type === 'export') {
-        // Сохраняем URL в хранилище и запускаем экспорт
-        await figma.clientStorage.setAsync('textsync:apiUrl', msg.apiUrl);
-        await exportTexts(msg.apiUrl);
+    console.log('[TextSync Plugin] Received message:', msg.type, msg);
+    
+    if (msg.type === 'request-api-url') {
+        console.log('[TextSync Plugin] API URL requested');
+        try {
+            const apiUrl = await figma.clientStorage.getAsync('textsync:apiUrl');
+            console.log('[TextSync Plugin] Sending API URL to UI:', apiUrl || '(none)');
+            figma.ui.postMessage({ type: 'load-api-url', apiUrl: apiUrl || '' });
+        } catch (err) {
+            console.error('[TextSync Plugin] Error getting API URL:', err);
+            figma.ui.postMessage({ type: 'load-api-url', apiUrl: '' });
+        }
     }
-    // Если пришло сообщение 'pull'
+    else if (msg.type === 'export') {
+        console.log('[TextSync Plugin] Export requested for project:', msg.projectId);
+        await figma.clientStorage.setAsync('textsync:apiUrl', msg.apiUrl);
+        await exportTexts(msg.apiUrl, msg.projectId);
+    }
     else if (msg.type === 'pull') {
-        // Сохраняем URL и запускаем загрузку текстов
+        console.log('[TextSync Plugin] Pull requested for project:', msg.projectId);
         await figma.clientStorage.setAsync('textsync:apiUrl', msg.apiUrl);
-        await pullTexts(msg.apiUrl);
+        await pullTexts(msg.apiUrl, msg.projectId);
     }
-    // Если пользователь просто изменил URL в поле ввода
     else if (msg.type === 'save-api-url') {
-        // Тихо сохраняем его в хранилище без запуска других действий
+        console.log('[TextSync Plugin] Saving API URL:', msg.apiUrl);
         await figma.clientStorage.setAsync('textsync:apiUrl', msg.apiUrl);
+        figma.ui.postMessage({ type: 'api-url-saved' });
+    }
+    else if (msg.type === 'navigate-to-layer') {
+        console.log('[TextSync Plugin] Navigate to layer requested:', msg.key);
+        navigateToLayer(msg.key);
     }
 };

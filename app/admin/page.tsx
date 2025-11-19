@@ -48,13 +48,21 @@ export default function AdminPage() {
   }
 
   const handleExportJSON = async () => {
-    const response = await fetch("/api/export/json?lang=ru")
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "ru.json"
-    a.click()
+    const enResponse = await fetch("/api/export/json?lang=en")
+    const enBlob = await enResponse.blob()
+    const enUrl = window.URL.createObjectURL(enBlob)
+    const aEn = document.createElement("a")
+    aEn.href = enUrl
+    aEn.download = "en.json"
+    aEn.click()
+
+    const ruResponse = await fetch("/api/export/json?lang=ru")
+    const ruBlob = await ruResponse.blob()
+    const ruUrl = window.URL.createObjectURL(ruBlob)
+    const aRu = document.createElement("a")
+    aRu.href = ruUrl
+    aRu.download = "ru.json"
+    aRu.click()
   }
 
   const getStatusBadge = (text: TextKey) => {

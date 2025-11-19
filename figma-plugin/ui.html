@@ -9,239 +9,361 @@
     
     body {
       margin: 0;
-      padding: 16px;
+      padding: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      font-size: 11px;
       color: #333;
+      background: #f5f5f5;
     }
     
-    h2 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
+    .header {
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 12px 16px;
+    }
+    
+    .header h2 {
+      margin: 0 0 4px 0;
+      font-size: 13px;
       font-weight: 600;
     }
     
+    .header-info {
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .tab {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .tab.active {
+      color: #0066ff;
+      border-bottom-color: #0066ff;
+    }
+    
+    .content {
+      display: none;
+      padding: 12px 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .content.active {
+      display: block;
+    }
+    
     .input-group {
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     
     label {
       display: block;
       margin-bottom: 4px;
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 10px;
+      font-weight: 600;
       color: #666;
+      text-transform: uppercase;
     }
     
-    input {
+    input, textarea, select {
       width: 100%;
-      padding: 8px;
+      padding: 6px 8px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: inherit;
     }
     
-    input:focus {
+    textarea {
+      min-height: 50px;
+      resize: vertical;
+    }
+    
+    input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: #0066ff;
     }
     
     .button-group {
       display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
     
     button {
-      flex: 1;
-      padding: 10px 16px;
+      padding: 6px 10px;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 3px;
+      font-size: 11px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
     }
     
-    button:hover {
-      transform: translateY(-1px);
-    }
-    
-    button:active {
-      transform: translateY(0);
-    }
-    
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      transform: none;
     }
     
     .btn-primary {
+      flex: 1;
       background: #0066ff;
       color: white;
     }
     
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
       background: #0052cc;
     }
     
     .btn-secondary {
+      flex: 1;
       background: #f0f0f0;
       color: #333;
     }
     
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       background: #e0e0e0;
     }
     
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 10px;
+    }
+    
+    .text-list {
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .text-item {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      display: grid;
+      grid-template-columns: 20px 1fr 30px;
+      gap: 6px;
+      align-items: start;
+    }
+    
+    .text-item:last-child {
+      border-bottom: none;
+    }
+    
+    .text-item-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    
+    .text-item input, .text-item select {
+      font-size: 10px;
+      padding: 4px 6px;
+    }
+    
+    .text-key-label {
+      font-size: 9px;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .text-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    
+    .status-draft { background: #f0f0f0; color: #666; }
+    .status-in_review { background: #fff4e6; color: #c87900; }
+    .status-approved { background: #e6f7ed; color: #0d6832; }
+    .status-no-loc { background: #ffe6cc; color: #cc5500; }
+    
     .status {
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      line-height: 1.5;
+      padding: 6px 10px;
+      border-radius: 3px;
+      font-size: 10px;
+      margin-bottom: 10px;
       display: none;
     }
     
-    .status.show {
-      display: block;
+    .status.show { display: block; }
+    .status.success { background: #e6f7ed; color: #0d6832; }
+    .status.error { background: #ffe6e6; color: #cc0000; }
+    .status.info { background: #e6f2ff; color: #0052cc; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 30px 15px;
+      color: #999;
+      font-size: 11px;
     }
     
-    .status.success {
-      background: #e6f7ed;
-      color: #0d6832;
-      border: 1px solid #b3e6c8;
+    .bulk-actions {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 10px;
     }
     
-    .status.error {
-      background: #ffe6e6;
-      color: #cc0000;
-      border: 1px solid #ffb3b3;
+    .btn-icon {
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
     }
     
-    .status.info {
+    .btn-icon:hover:not(:disabled) {
+      background: #e8e8e8;
+    }
+    
+    .project-list {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    
+    .project-item {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .project-item:hover {
+      background: #f8f8f8;
+    }
+    
+    .project-item.active {
       background: #e6f2ff;
-      color: #0052cc;
-      border: 1px solid #b3d9ff;
+    }
+    
+    .project-item:last-child {
+      border-bottom: none;
+    }
+    
+    .project-name {
+      flex: 1;
+      font-weight: 500;
+      font-size: 11px;
+    }
+    
+    .project-info {
+      font-size: 9px;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <h2>TextSync</h2>
-  
-  <div class="input-group">
-    <label for="apiUrl">API URL</label>
-    <input 
-      type="text" 
-      id="apiUrl" 
-      placeholder="https://your-app.vercel.app"
-      value=""
-    />
+  <div class="header">
+    <h2>TextSync</h2>
+    <div class="header-info" id="headerInfo">Not connected</div>
+    <div class="tabs">
+      <button class="tab active" data-tab="sync">Sync</button>
+      <button class="tab" data-tab="manage">Manage</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </div>
   </div>
   
-  <div class="button-group">
-    <button class="btn-primary" id="exportBtn">Export to Admin</button>
-    <button class="btn-secondary" id="pullBtn">Pull Approved</button>
+  <!-- Sync Tab -->
+  <div class="content active" data-content="sync">
+    <div class="input-group">
+      <label>Project</label>
+      <select id="syncProjectSelect" disabled>
+        <option value="">Loading projects...</option>
+      </select>
+    </div>
+    
+    <div class="button-group">
+      <button class="btn-primary" id="exportBtn">Export to Admin</button>
+      <button class="btn-secondary" id="pullBtn">Pull from Admin</button>
+    </div>
+    <div id="syncStatus" class="status"></div>
   </div>
   
-  <div id="status" class="status"></div>
+  <!-- Manage Tab -->
+  <div class="content" data-content="manage">
+    <div class="input-group">
+      <label>Project</label>
+      <select id="manageProjectSelect" disabled>
+        <option value="">Loading projects...</option>
+      </select>
+    </div>
+    
+    <div class="bulk-actions">
+      <div class="button-group">
+        <button class="btn-secondary btn-small" id="selectAllBtn">Select All</button>
+        <button class="btn-secondary btn-small" id="refreshBtn">Refresh</button>
+        <button class="btn-primary btn-small" id="syncSelectedBtn">Sync Selected</button>
+      </div>
+      <div class="button-group">
+        <select id="bulkStatusSelect" class="btn-small">
+          <option value="">Change status...</option>
+          <option value="draft">Draft</option>
+          <option value="in_review">In Review</option>
+          <option value="approved">Done</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="manageStatus" class="status"></div>
+    <div class="text-list" id="textList">
+      <div class="empty-state">Select a project to view texts</div>
+    </div>
+  </div>
   
-  <script>
-    const apiUrlInput = document.getElementById('apiUrl');
-    const exportBtn = document.getElementById('exportBtn');
-    const pullBtn = document.getElementById('pullBtn');
-    const statusDiv = document.getElementById('status');
+  <!-- Settings Tab -->
+  <div class="content" data-content="settings">
+    <div class="input-group">
+      <label>API URL</label>
+      <input 
+        type="text" 
+        id="apiUrl" 
+        placeholder="https://your-app.vercel.app"
+      />
+    </div>
     
-    console.log('[v0] UI loaded');
+    <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
     
-    // The plugin code will send a saved URL via figma.clientStorage
-    
-    function showStatus(message, type) {
-      console.log('[v0] Status:', type, message);
-      statusDiv.textContent = message;
-      statusDiv.className = `status show ${type}`;
-    }
-    
-    function hideStatus() {
-      statusDiv.className = 'status';
-    }
-    
-    function setLoading(isLoading) {
-      exportBtn.disabled = isLoading;
-      pullBtn.disabled = isLoading;
-    }
-    
-    exportBtn.addEventListener('click', () => {
-      console.log('[v0] Export button clicked');
-      const apiUrl = apiUrlInput.value.trim();
+    <div style="margin: 16px 0; border-top: 1px solid #e0e0e0; padding-top: 16px;">
+      <label>Projects</label>
+      <div class="project-list" id="projectList">
+        <div class="empty-state">No projects</div>
+      </div>
       
-      if (!apiUrl) {
-        showStatus('Please enter API URL', 'error');
-        return;
-      }
-      
-      hideStatus();
-      setLoading(true);
-      showStatus('Exporting texts...', 'info');
-      
-      console.log('[v0] Sending export message with URL:', apiUrl);
-      parent.postMessage({
-        pluginMessage: { type: 'export', apiUrl }
-      }, '*');
-    });
+      <div class="input-group">
+        <input type="text" id="newProjectName" placeholder="New project name" />
+      </div>
+      <button class="btn-secondary" id="createProjectBtn">Create Project</button>
+    </div>
     
-    pullBtn.addEventListener('click', () => {
-      console.log('[v0] Pull button clicked');
-      const apiUrl = apiUrlInput.value.trim();
-      
-      if (!apiUrl) {
-        showStatus('Please enter API URL', 'error');
-        return;
-      }
-      
-      hideStatus();
-      setLoading(true);
-      showStatus('Pulling approved texts...', 'info');
-      
-      console.log('[v0] Sending pull message with URL:', apiUrl);
-      parent.postMessage({
-        pluginMessage: { type: 'pull', apiUrl }
-      }, '*');
-    });
-    
-    // Handle messages from plugin code
-    window.onmessage = (event) => {
-      console.log('[v0] Received message from plugin:', event.data);
-      const msg = event.data.pluginMessage;
-      
-      if (!msg) {
-        console.log('[v0] No pluginMessage in event');
-        return;
-      }
-      
-      if (msg.type === 'load-api-url') {
-        // Pre-fill API URL from plugin persistent storage
-        if (msg.apiUrl && typeof msg.apiUrl === 'string') {
-          apiUrlInput.value = msg.apiUrl;
-          console.log('[v0] Pre-filled API URL from plugin storage');
-        }
-        return;
-      }
-
-      setLoading(false);
-
-      if (msg.type === 'export-complete') {
-        showStatus(msg.data.message, 'success');
-      } else if (msg.type === 'export-error') {
-        showStatus(`Export failed: ${msg.data.message}`, 'error');
-      } else if (msg.type === 'pull-complete') {
-        showStatus(msg.data.message, 'success');
-      } else if (msg.type === 'pull-error') {
-        showStatus(`Pull failed: ${msg.data.message}`, 'error');
-      }
-    };
-    
-    console.log('[v0] Event listeners attached');
-  </script>
+    <div id="settingsStatus" class="status"></div>
+  </div>
+  
+  <script src="plugin-ui.js"></script>
 </body>
 </html>
