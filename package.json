@@ -41,7 +41,7 @@
     "@supabase/supabase-js": "latest",
     "@vercel/analytics": "latest",
     "autoprefixer": "^10.4.20",
-    "class-variance-authority": "^0.7.1",
+    "class-variance-authority": "latest",
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "date-fns": "4.1.0",
