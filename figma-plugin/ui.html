@@ -9,239 +9,831 @@
     
     body {
       margin: 0;
-      padding: 16px;
+      padding: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      font-size: 11px;
       color: #333;
+      background: #f5f5f5;
     }
     
-    h2 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
+    .header {
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 12px 16px;
+    }
+    
+    .header h2 {
+      margin: 0 0 4px 0;
+      font-size: 13px;
       font-weight: 600;
     }
     
+    .header-info {
+      font-size: 10px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .tab {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .tab.active {
+      color: #0066ff;
+      border-bottom-color: #0066ff;
+    }
+    
+    .content {
+      display: none;
+      padding: 12px 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .content.active {
+      display: block;
+    }
+    
     .input-group {
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
     
     label {
       display: block;
       margin-bottom: 4px;
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 10px;
+      font-weight: 600;
       color: #666;
+      text-transform: uppercase;
     }
     
-    input {
+    input, textarea, select {
       width: 100%;
-      padding: 8px;
+      padding: 6px 8px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: inherit;
     }
     
-    input:focus {
+    textarea {
+      min-height: 50px;
+      resize: vertical;
+    }
+    
+    input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: #0066ff;
     }
     
     .button-group {
       display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
     
     button {
-      flex: 1;
-      padding: 10px 16px;
+      padding: 6px 10px;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 3px;
+      font-size: 11px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
     }
     
-    button:hover {
-      transform: translateY(-1px);
-    }
-    
-    button:active {
-      transform: translateY(0);
-    }
-    
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      transform: none;
     }
     
     .btn-primary {
+      flex: 1;
       background: #0066ff;
       color: white;
     }
     
-    .btn-primary:hover {
+    .btn-primary:hover:not(:disabled) {
       background: #0052cc;
     }
     
     .btn-secondary {
+      flex: 1;
       background: #f0f0f0;
       color: #333;
     }
     
-    .btn-secondary:hover {
+    .btn-secondary:hover:not(:disabled) {
       background: #e0e0e0;
     }
     
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 10px;
+    }
+    
+    .text-list {
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .text-item {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      display: grid;
+      grid-template-columns: 20px 1fr 30px;
+      gap: 6px;
+      align-items: start;
+    }
+    
+    .text-item:last-child {
+      border-bottom: none;
+    }
+    
+    .text-item-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    
+    .text-item input, .text-item select {
+      font-size: 10px;
+      padding: 4px 6px;
+    }
+    
+    .text-key-label {
+      font-size: 9px;
+      color: #999;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .text-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    
+    .status-draft { background: #f0f0f0; color: #666; }
+    .status-in_review { background: #fff4e6; color: #c87900; }
+    .status-approved { background: #e6f7ed; color: #0d6832; }
+    .status-no-loc { background: #ffe6cc; color: #cc5500; }
+    
     .status {
-      padding: 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      line-height: 1.5;
+      padding: 6px 10px;
+      border-radius: 3px;
+      font-size: 10px;
+      margin-bottom: 10px;
       display: none;
     }
     
-    .status.show {
-      display: block;
+    .status.show { display: block; }
+    .status.success { background: #e6f7ed; color: #0d6832; }
+    .status.error { background: #ffe6e6; color: #cc0000; }
+    .status.info { background: #e6f2ff; color: #0052cc; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 30px 15px;
+      color: #999;
+      font-size: 11px;
     }
     
-    .status.success {
-      background: #e6f7ed;
-      color: #0d6832;
-      border: 1px solid #b3e6c8;
+    .bulk-actions {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 8px;
+      margin-bottom: 10px;
     }
     
-    .status.error {
-      background: #ffe6e6;
-      color: #cc0000;
-      border: 1px solid #ffb3b3;
+    .btn-icon {
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
     }
     
-    .status.info {
+    .btn-icon:hover:not(:disabled) {
+      background: #e8e8e8;
+    }
+    
+    .project-list {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    
+    .project-item {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .project-item:hover {
+      background: #f8f8f8;
+    }
+    
+    .project-item.active {
       background: #e6f2ff;
-      color: #0052cc;
-      border: 1px solid #b3d9ff;
+    }
+    
+    .project-item:last-child {
+      border-bottom: none;
+    }
+    
+    .project-name {
+      flex: 1;
+      font-weight: 500;
+      font-size: 11px;
+    }
+    
+    .project-info {
+      font-size: 9px;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <h2>TextSync</h2>
-  
-  <div class="input-group">
-    <label for="apiUrl">API URL</label>
-    <input 
-      type="text" 
-      id="apiUrl" 
-      placeholder="https://your-app.vercel.app"
-      value=""
-    />
+  <div class="header">
+    <h2>TextSync</h2>
+    <div class="header-info" id="headerInfo">Not connected</div>
+    <div class="tabs">
+      <button class="tab active" data-tab="sync">Sync</button>
+      <button class="tab" data-tab="manage">Manage</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </div>
   </div>
   
-  <div class="button-group">
-    <button class="btn-primary" id="exportBtn">Export to Admin</button>
-    <button class="btn-secondary" id="pullBtn">Pull Approved</button>
+  <!-- Sync Tab -->
+  <div class="content active" data-content="sync">
+    <div class="input-group">
+      <label>Project</label>
+      <select id="syncProjectSelect" disabled>
+        <option value="">Loading projects...</option>
+      </select>
+    </div>
+    
+    <div class="button-group">
+      <button class="btn-primary" id="exportBtn">Export to Admin</button>
+      <button class="btn-secondary" id="pullBtn">Pull from Admin</button>
+    </div>
+    <div id="syncStatus" class="status"></div>
   </div>
   
-  <div id="status" class="status"></div>
+  <!-- Manage Tab -->
+  <div class="content" data-content="manage">
+    <div class="input-group">
+      <label>Project</label>
+      <select id="manageProjectSelect" disabled>
+        <option value="">Loading projects...</option>
+      </select>
+    </div>
+    
+    <div class="bulk-actions">
+      <div class="button-group">
+        <button class="btn-secondary btn-small" id="selectAllBtn">Select All</button>
+        <button class="btn-secondary btn-small" id="refreshBtn">Refresh</button>
+        <button class="btn-primary btn-small" id="syncSelectedBtn">Sync Selected</button>
+      </div>
+      <div class="button-group">
+        <select id="bulkStatusSelect" class="btn-small">
+          <option value="">Change status...</option>
+          <option value="draft">Draft</option>
+          <option value="in_review">In Review</option>
+          <option value="approved">Done</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="manageStatus" class="status"></div>
+    <div class="text-list" id="textList">
+      <div class="empty-state">Select a project to view texts</div>
+    </div>
+  </div>
+  
+  <!-- Settings Tab -->
+  <div class="content" data-content="settings">
+    <div class="input-group">
+      <label>API URL</label>
+      <input 
+        type="text" 
+        id="apiUrl" 
+        placeholder="https://your-app.vercel.app"
+      />
+    </div>
+    
+    <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+    
+    <div style="margin: 16px 0; border-top: 1px solid #e0e0e0; padding-top: 16px;">
+      <label>Projects</label>
+      <div class="project-list" id="projectList">
+        <div class="empty-state">No projects</div>
+      </div>
+      
+      <div class="input-group">
+        <input type="text" id="newProjectName" placeholder="New project name" />
+      </div>
+      <button class="btn-secondary" id="createProjectBtn">Create Project</button>
+    </div>
+    
+    <div id="settingsStatus" class="status"></div>
+  </div>
   
   <script>
-    const apiUrlInput = document.getElementById('apiUrl');
-    const exportBtn = document.getElementById('exportBtn');
-    const pullBtn = document.getElementById('pullBtn');
-    const statusDiv = document.getElementById('status');
-    
-    console.log('[v0] UI loaded');
-    
-    // The plugin code will send a saved URL via figma.clientStorage
-    
-    function showStatus(message, type) {
-      console.log('[v0] Status:', type, message);
-      statusDiv.textContent = message;
-      statusDiv.className = `status show ${type}`;
+    // State
+    let currentApiUrl = '';
+    let allTexts = [];
+    let allProjects = [];
+    let selectedTexts = new Set();
+    let activeProjectId = null;
+
+    // Status helpers
+    function showStatus(elementId, message, type) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = 'status show ' + type;
     }
-    
-    function hideStatus() {
-      statusDiv.className = 'status';
+
+    function hideStatus(elementId) {
+      document.getElementById(elementId).className = 'status';
     }
-    
-    function setLoading(isLoading) {
-      exportBtn.disabled = isLoading;
-      pullBtn.disabled = isLoading;
-    }
-    
-    exportBtn.addEventListener('click', () => {
-      console.log('[v0] Export button clicked');
-      const apiUrl = apiUrlInput.value.trim();
+
+    function updateHeaderInfo() {
+      const activeProject = allProjects.find(p => p.is_active);
+      const headerInfo = document.getElementById('headerInfo');
       
-      if (!apiUrl) {
-        showStatus('Please enter API URL', 'error');
+      if (!currentApiUrl) {
+        headerInfo.textContent = 'Not connected - Set API URL in Settings';
+      } else if (activeProject) {
+        headerInfo.textContent = activeProject.name + ' → ' + activeProject.github_owner + '/' + activeProject.github_repo;
+      } else {
+        headerInfo.textContent = 'Connected - No active project';
+      }
+    }
+
+    // Load projects
+    async function loadProjects() {
+      if (!currentApiUrl) {
+        console.log('[TextSync UI] Cannot load projects - no API URL');
         return;
       }
       
-      hideStatus();
-      setLoading(true);
-      showStatus('Exporting texts...', 'info');
+      console.log('[TextSync UI] Loading projects from:', currentApiUrl);
       
-      console.log('[v0] Sending export message with URL:', apiUrl);
-      parent.postMessage({
-        pluginMessage: { type: 'export', apiUrl }
-      }, '*');
-    });
-    
-    pullBtn.addEventListener('click', () => {
-      console.log('[v0] Pull button clicked');
-      const apiUrl = apiUrlInput.value.trim();
+      try {
+        const response = await fetch(currentApiUrl + '/api/projects');
+        const data = await response.json();
+        allProjects = data.projects || [];
+        
+        console.log('[TextSync UI] Loaded', allProjects.length, 'projects');
+        
+        renderProjectSelects();
+        renderProjectList();
+        updateHeaderInfo();
+      } catch (error) {
+        console.error('[TextSync UI] Failed to load projects:', error);
+      }
+    }
+
+    function renderProjectSelects() {
+      const syncSelect = document.getElementById('syncProjectSelect');
+      const manageSelect = document.getElementById('manageProjectSelect');
       
-      if (!apiUrl) {
-        showStatus('Please enter API URL', 'error');
+      const activeProject = allProjects.find(p => p.is_active);
+      
+      if (allProjects.length === 0) {
+        syncSelect.innerHTML = '<option value="">No projects - Create one in Settings</option>';
+        manageSelect.innerHTML = '<option value="">No projects - Create one in Settings</option>';
+        syncSelect.disabled = true;
+        manageSelect.disabled = true;
+      } else {
+        let options = '';
+        allProjects.forEach(p => {
+          options += '<option value="' + p.id + '"' + (p.is_active ? ' selected' : '') + '>' + p.name + '</option>';
+        });
+        
+        syncSelect.innerHTML = options;
+        manageSelect.innerHTML = options;
+        syncSelect.disabled = false;
+        manageSelect.disabled = false;
+        
+        if (activeProject) {
+          syncSelect.value = activeProject.id;
+          manageSelect.value = activeProject.id;
+          activeProjectId = activeProject.id;
+        }
+      }
+    }
+
+    function renderProjectList() {
+      const listEl = document.getElementById('projectList');
+      
+      if (allProjects.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">No projects yet</div>';
         return;
       }
       
-      hideStatus();
-      setLoading(true);
-      showStatus('Pulling approved texts...', 'info');
+      let html = '';
+      allProjects.forEach(p => {
+        html += '<div class="project-item ' + (p.is_active ? 'active' : '') + '" data-id="' + p.id + '">';
+        html += '<input type="radio" name="project" ' + (p.is_active ? 'checked' : '') + ' />';
+        html += '<div style="flex: 1;">';
+        html += '<div class="project-name">' + p.name + '</div>';
+        html += '<div class="project-info">' + (p.github_owner || 'No owner') + '/' + (p.github_repo || 'No repo') + '</div>';
+        html += '</div></div>';
+      });
+      listEl.innerHTML = html;
       
-      console.log('[v0] Sending pull message with URL:', apiUrl);
-      parent.postMessage({
-        pluginMessage: { type: 'pull', apiUrl }
-      }, '*');
-    });
-    
-    // Handle messages from plugin code
-    window.onmessage = (event) => {
-      console.log('[v0] Received message from plugin:', event.data);
+      listEl.querySelectorAll('.project-item').forEach(item => {
+        item.onclick = function() {
+          setActiveProject(item.dataset.id);
+        };
+      });
+    }
+
+    async function setActiveProject(projectId) {
+      if (!currentApiUrl || !projectId) return;
+      
+      try {
+        await fetch(currentApiUrl + '/api/projects/' + projectId + '/activate', { method: 'POST' });
+        await loadProjects();
+        loadTexts();
+      } catch (error) {
+        console.error('[TextSync] Failed to set active project:', error);
+      }
+    }
+
+    // Sync handlers
+    function handleExport() {
+      console.log('[TextSync UI] Export clicked');
+      
+      if (!currentApiUrl) {
+        showStatus('syncStatus', 'Please set API URL in Settings', 'error');
+        return;
+      }
+      
+      const projectId = document.getElementById('syncProjectSelect').value;
+      if (!projectId) {
+        showStatus('syncStatus', 'Please select a project', 'error');
+        return;
+      }
+      
+      showStatus('syncStatus', 'Exporting...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'export', apiUrl: currentApiUrl, projectId: projectId } }, '*');
+    }
+
+    function handlePull() {
+      console.log('[TextSync UI] Pull clicked');
+      
+      if (!currentApiUrl) {
+        showStatus('syncStatus', 'Please set API URL in Settings', 'error');
+        return;
+      }
+      
+      const projectId = document.getElementById('syncProjectSelect').value;
+      if (!projectId) {
+        showStatus('syncStatus', 'Please select a project', 'error');
+        return;
+      }
+      
+      showStatus('syncStatus', 'Pulling...', 'info');
+      parent.postMessage({ pluginMessage: { type: 'pull', apiUrl: currentApiUrl, projectId: projectId } }, '*');
+    }
+
+    // Manage tab
+    async function loadTexts() {
+      if (!currentApiUrl) {
+        document.getElementById('textList').innerHTML = '<div class="empty-state">Set API URL in Settings first</div>';
+        return;
+      }
+      
+      const projectId = document.getElementById('manageProjectSelect').value;
+      if (!projectId) {
+        document.getElementById('textList').innerHTML = '<div class="empty-state">Select a project first</div>';
+        return;
+      }
+      
+      console.log('[TextSync UI] Loading texts for project:', projectId);
+      showStatus('manageStatus', 'Loading...', 'info');
+      
+      try {
+        const response = await fetch(currentApiUrl + '/api/texts?project_id=' + projectId);
+        const data = await response.json();
+        allTexts = data.texts || [];
+        
+        console.log('[TextSync UI] Loaded', allTexts.length, 'texts');
+        renderTextList();
+        hideStatus('manageStatus');
+      } catch (error) {
+        console.error('[TextSync UI] Failed to load texts:', error);
+        showStatus('manageStatus', 'Failed to load texts', 'error');
+      }
+    }
+
+    function renderTextList() {
+      const listEl = document.getElementById('textList');
+      
+      if (allTexts.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">No texts found. Export from Figma to get started.</div>';
+        return;
+      }
+      
+      let html = '';
+      allTexts.forEach(text => {
+        const hasRu = text.value_ru && text.value_ru.trim();
+        const statusClass = !hasRu ? 'status-no-loc' : 'status-' + text.status;
+        const statusLabel = !hasRu ? 'No translation' : 
+          text.status === 'draft' ? 'Draft' : 
+          text.status === 'in_review' ? 'In Review' : 'Done';
+        
+        html += '<div class="text-item">';
+        html += '<input type="checkbox" data-key="' + text.key + '" ' + (selectedTexts.has(text.key) ? 'checked' : '') + ' />';
+        html += '<div class="text-item-content">';
+        html += '<span class="text-key-label">Key</span>';
+        html += '<input type="text" value="' + (text.key || '') + '" data-key="' + text.key + '" data-field="key" class="text-field" />';
+        html += '<span class="text-key-label">English</span>';
+        html += '<input type="text" value="' + (text.value_en || '') + '" data-key="' + text.key + '" data-field="value_en" class="text-field" />';
+        html += '<span class="text-key-label">Russian</span>';
+        html += '<input type="text" value="' + (text.value_ru || '') + '" placeholder="Add translation..." data-key="' + text.key + '" data-field="value_ru" class="text-field" />';
+        html += '<div style="display: flex; gap: 4px; align-items: center;">';
+        html += '<select data-key="' + text.key + '" data-field="status" style="flex: 1;">';
+        html += '<option value="draft"' + (text.status === 'draft' ? ' selected' : '') + '>Draft</option>';
+        html += '<option value="in_review"' + (text.status === 'in_review' ? ' selected' : '') + '>In Review</option>';
+        html += '<option value="approved"' + (text.status === 'approved' ? ' selected' : '') + '>Done</option>';
+        html += '</select>';
+        html += '<span class="text-status ' + statusClass + '">' + statusLabel + '</span>';
+        html += '</div></div>';
+        html += '<button class="btn-icon" data-key="' + text.key + '" title="Go to layer">&#128065;</button>';
+        html += '</div>';
+      });
+      
+      listEl.innerHTML = html;
+      
+      // Attach event listeners
+      listEl.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+        cb.onchange = function(e) {
+          if (e.target.checked) {
+            selectedTexts.add(e.target.dataset.key);
+          } else {
+            selectedTexts.delete(e.target.dataset.key);
+          }
+        };
+      });
+      
+      listEl.querySelectorAll('.text-field').forEach(function(input) {
+        input.onblur = function(e) {
+          const updates = {};
+          updates[e.target.dataset.field] = e.target.value;
+          updateText(e.target.dataset.key, updates);
+        };
+      });
+      
+      listEl.querySelectorAll('select[data-field="status"]').forEach(function(select) {
+        select.onchange = function(e) {
+          updateText(e.target.dataset.key, { status: e.target.value });
+        };
+      });
+      
+      listEl.querySelectorAll('.btn-icon').forEach(function(btn) {
+        btn.onclick = function(e) {
+          parent.postMessage({ pluginMessage: { type: 'navigate-to-layer', key: btn.dataset.key } }, '*');
+        };
+      });
+    }
+
+    function handleSelectAll() {
+      if (selectedTexts.size === allTexts.length) {
+        selectedTexts.clear();
+      } else {
+        allTexts.forEach(t => selectedTexts.add(t.key));
+      }
+      renderTextList();
+    }
+
+    async function handleSyncSelected() {
+      if (!currentApiUrl) {
+        showStatus('manageStatus', 'Please set API URL', 'error');
+        return;
+      }
+      
+      if (selectedTexts.size === 0) {
+        showStatus('manageStatus', 'No items selected', 'error');
+        return;
+      }
+      
+      showStatus('manageStatus', 'Syncing to GitHub...', 'info');
+      
+      try {
+        const response = await fetch(currentApiUrl + '/api/sync/github', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keys: Array.from(selectedTexts) })
+        });
+        
+        const data = await response.json();
+        showStatus('manageStatus', 'Synced ' + (data.count || 0) + ' items to GitHub', 'success');
+        setTimeout(function() { hideStatus('manageStatus'); }, 3000);
+      } catch (error) {
+        console.error('[TextSync UI] Sync error:', error);
+        showStatus('manageStatus', 'Failed to sync to GitHub', 'error');
+      }
+    }
+
+    async function handleBulkStatus(e) {
+      const status = e.target.value;
+      if (!status || selectedTexts.size === 0) return;
+      
+      showStatus('manageStatus', 'Updating...', 'info');
+      
+      try {
+        const promises = Array.from(selectedTexts).map(function(key) {
+          return updateText(key, { status: status });
+        });
+        await Promise.all(promises);
+        
+        showStatus('manageStatus', 'Updated ' + selectedTexts.size + ' items', 'success');
+        setTimeout(function() { hideStatus('manageStatus'); }, 2000);
+      } catch (error) {
+        showStatus('manageStatus', 'Failed to update', 'error');
+      }
+      
+      e.target.value = '';
+    }
+
+    // Settings
+    function handleSaveSettings() {
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      
+      if (!apiUrl) {
+        showStatus('settingsStatus', 'Please enter API URL', 'error');
+        return;
+      }
+      
+      console.log('[TextSync UI] Saving API URL:', apiUrl);
+      currentApiUrl = apiUrl;
+      parent.postMessage({ pluginMessage: { type: 'save-api-url', apiUrl: apiUrl } }, '*');
+      showStatus('settingsStatus', 'Settings saved', 'success');
+      
+      loadProjects();
+      updateHeaderInfo();
+      setTimeout(function() { hideStatus('settingsStatus'); }, 2000);
+    }
+
+    async function handleCreateProject() {
+      const name = document.getElementById('newProjectName').value.trim();
+      
+      if (!name) {
+        showStatus('settingsStatus', 'Please enter project name', 'error');
+        return;
+      }
+      
+      if (!currentApiUrl) {
+        showStatus('settingsStatus', 'Please set API URL first', 'error');
+        return;
+      }
+      
+      try {
+        const response = await fetch(currentApiUrl + '/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            github_owner: '',
+            github_repo: '',
+            github_branch: 'main',
+            github_path: 'locales/text.json'
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed');
+        
+        document.getElementById('newProjectName').value = '';
+        showStatus('settingsStatus', 'Project created', 'success');
+        await loadProjects();
+        setTimeout(function() { hideStatus('settingsStatus'); }, 2000);
+      } catch (error) {
+        showStatus('settingsStatus', 'Failed to create project', 'error');
+      }
+    }
+
+    async function updateText(key, updates) {
+      if (!currentApiUrl) return;
+      
+      try {
+        await fetch(currentApiUrl + '/api/texts/' + encodeURIComponent(key), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        });
+        
+        const idx = allTexts.findIndex(function(t) { return t.key === key; });
+        if (idx !== -1) {
+          Object.assign(allTexts[idx], updates);
+          renderTextList();
+        }
+      } catch (error) {
+        console.error('[TextSync] Update text error:', error);
+      }
+    }
+
+    // Message handler
+    onmessage = function(event) {
       const msg = event.data.pluginMessage;
+      if (!msg) return;
       
-      if (!msg) {
-        console.log('[v0] No pluginMessage in event');
-        return;
-      }
+      console.log('[TextSync UI] Message received:', msg.type);
       
       if (msg.type === 'load-api-url') {
-        // Pre-fill API URL from plugin persistent storage
-        if (msg.apiUrl && typeof msg.apiUrl === 'string') {
-          apiUrlInput.value = msg.apiUrl;
-          console.log('[v0] Pre-filled API URL from plugin storage');
+        currentApiUrl = msg.apiUrl || '';
+        document.getElementById('apiUrl').value = currentApiUrl;
+        console.log('[TextSync UI] API URL:', currentApiUrl || '(empty)');
+        
+        if (currentApiUrl) {
+          loadProjects();
         }
-        return;
-      }
-
-      setLoading(false);
-
-      if (msg.type === 'export-complete') {
-        showStatus(msg.data.message, 'success');
+        updateHeaderInfo();
+      } else if (msg.type === 'export-complete') {
+        showStatus('syncStatus', msg.data.message, 'success');
+        loadTexts();
       } else if (msg.type === 'export-error') {
-        showStatus(`Export failed: ${msg.data.message}`, 'error');
+        showStatus('syncStatus', 'Export failed: ' + msg.data.message, 'error');
       } else if (msg.type === 'pull-complete') {
-        showStatus(msg.data.message, 'success');
+        showStatus('syncStatus', msg.data.message, 'success');
       } else if (msg.type === 'pull-error') {
-        showStatus(`Pull failed: ${msg.data.message}`, 'error');
+        showStatus('syncStatus', 'Pull failed: ' + msg.data.message, 'error');
       }
     };
-    
-    console.log('[v0] Event listeners attached');
+
+    // Initialize when DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('[TextSync UI] DOM loaded, initializing...');
+      
+      // Tab switching
+      document.querySelectorAll('.tab').forEach(function(tab) {
+        tab.onclick = function() {
+          const tabName = tab.dataset.tab;
+          console.log('[TextSync UI] Tab clicked:', tabName);
+          
+          document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+          document.querySelectorAll('.content').forEach(function(c) { c.classList.remove('active'); });
+          
+          tab.classList.add('active');
+          document.querySelector('[data-content="' + tabName + '"]').classList.add('active');
+          
+          if (tabName === 'manage') loadTexts();
+          if (tabName === 'settings') loadProjects();
+        };
+      });
+      
+      // Button listeners
+      document.getElementById('exportBtn').onclick = handleExport;
+      document.getElementById('pullBtn').onclick = handlePull;
+      document.getElementById('saveSettingsBtn').onclick = handleSaveSettings;
+      document.getElementById('createProjectBtn').onclick = handleCreateProject;
+      document.getElementById('selectAllBtn').onclick = handleSelectAll;
+      document.getElementById('refreshBtn').onclick = loadTexts;
+      document.getElementById('syncSelectedBtn').onclick = handleSyncSelected;
+      document.getElementById('bulkStatusSelect').onchange = handleBulkStatus;
+      
+      document.getElementById('syncProjectSelect').onchange = function(e) {
+        activeProjectId = e.target.value;
+        setActiveProject(activeProjectId);
+      };
+      
+      document.getElementById('manageProjectSelect').onchange = function(e) {
+        activeProjectId = e.target.value;
+        setActiveProject(activeProjectId);
+        loadTexts();
+      };
+      
+      console.log('[TextSync UI] Requesting API URL from plugin...');
+      parent.postMessage({ pluginMessage: { type: 'request-api-url' } }, '*');
+    });
   </script>
 </body>
 </html>
